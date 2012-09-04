@@ -1,0 +1,10 @@
+TX
+TE
+SY		// SYmbol
+LS		// Line Simple Style
+LC		// Line Complex
+MPS		// Multipoint Sounding
+CS		// Conditional Symbology
+CARC	// Circular Arc, 2 colors
+AC
+AP

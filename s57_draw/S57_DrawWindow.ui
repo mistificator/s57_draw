@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>S57_DrawWindow</class>
+ <widget class="QMainWindow" name="S57_DrawWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>S57 Draw</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QGraphicsView" name="S57View">
+      <property name="cursor" stdset="0">
+       <cursorShape>CrossCursor</cursorShape>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <property name="dragMode">
+       <enum>QGraphicsView::NoDrag</enum>
+      </property>
+      <property name="cacheMode">
+       <set>QGraphicsView::CacheNone</set>
+      </property>
+      <property name="transformationAnchor">
+       <enum>QGraphicsView::AnchorUnderMouse</enum>
+      </property>
+      <property name="resizeAnchor">
+       <enum>QGraphicsView::AnchorViewCenter</enum>
+      </property>
+      <property name="viewportUpdateMode">
+       <enum>QGraphicsView::MinimalViewportUpdate</enum>
+      </property>
+      <property name="rubberBandSelectionMode">
+       <enum>Qt::IntersectsItemShape</enum>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen"/>
+    <addaction name="actionAdd"/>
+    <addaction name="actionOpen_folder"/>
+    <addaction name="actionAdd_folder"/>
+    <addaction name="separator"/>
+    <addaction name="actionExport_whole_chart"/>
+    <addaction name="actionExport_visible_area"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <widget class="QMenu" name="menuScale">
+     <property name="title">
+      <string>Scale</string>
+     </property>
+     <addaction name="action1_5000000"/>
+     <addaction name="action1_2000000"/>
+     <addaction name="action1_1000000"/>
+     <addaction name="separator"/>
+     <addaction name="action1_500000"/>
+     <addaction name="action1_200000"/>
+     <addaction name="action1_100000"/>
+     <addaction name="separator"/>
+     <addaction name="action1_50000"/>
+     <addaction name="action1_20000"/>
+     <addaction name="action1_10000"/>
+     <addaction name="separator"/>
+     <addaction name="action1_5000"/>
+    </widget>
+    <widget class="QMenu" name="menuAspect_X_Y">
+     <property name="title">
+      <string>Aspect (X:Y)</string>
+     </property>
+     <addaction name="action_aspect_1_1"/>
+     <addaction name="action_aspect_1_2"/>
+    </widget>
+    <addaction name="menuScale"/>
+    <addaction name="actionColorScheme"/>
+    <addaction name="actionLandAndSea"/>
+    <addaction name="actionMouse_dragging"/>
+    <addaction name="menuAspect_X_Y"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionExport_symbols"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menuTools"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionAdd">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="actionOpen_folder">
+   <property name="text">
+    <string>Open folder</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
+   </property>
+  </action>
+  <action name="actionAdd_folder">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add folder</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+F</string>
+   </property>
+  </action>
+  <action name="action1_5000000">
+   <property name="text">
+    <string>1:5000000</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+0</string>
+   </property>
+  </action>
+  <action name="action1_2000000">
+   <property name="text">
+    <string>1:2000000</string>
+   </property>
+  </action>
+  <action name="action1_1000000">
+   <property name="text">
+    <string>1:1000000</string>
+   </property>
+  </action>
+  <action name="action1_500000">
+   <property name="text">
+    <string>1:500000</string>
+   </property>
+  </action>
+  <action name="action1_200000">
+   <property name="text">
+    <string>1:200000</string>
+   </property>
+  </action>
+  <action name="action1_100000">
+   <property name="text">
+    <string>1:100000</string>
+   </property>
+  </action>
+  <action name="actionLandAndSea">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Land and sea only</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionExport_visible_area">
+   <property name="text">
+    <string>Export visible area</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionExport_whole_chart">
+   <property name="text">
+    <string>Export chart</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionColorScheme">
+   <property name="text">
+    <string>Color scheme</string>
+   </property>
+  </action>
+  <action name="action1_50000">
+   <property name="text">
+    <string>1:50000</string>
+   </property>
+  </action>
+  <action name="action1_20000">
+   <property name="text">
+    <string>1:20000</string>
+   </property>
+  </action>
+  <action name="action1_10000">
+   <property name="text">
+    <string>1:10000</string>
+   </property>
+  </action>
+  <action name="action1_5000">
+   <property name="text">
+    <string>1:5000</string>
+   </property>
+  </action>
+  <action name="actionMouse_dragging">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mouse dragging</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+M</string>
+   </property>
+  </action>
+  <action name="actionExport_symbols">
+   <property name="text">
+    <string>Export symbols</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="action_aspect_1_1">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>1:1</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+1</string>
+   </property>
+  </action>
+  <action name="action_aspect_1_2">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>1:2</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+2</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

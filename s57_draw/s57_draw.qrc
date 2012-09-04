@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/global">
+        <file>s57_draw.qm</file>
+    </qresource>
+</RCC>

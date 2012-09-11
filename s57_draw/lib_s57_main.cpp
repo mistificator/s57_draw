@@ -1,13 +1,13 @@
 #include "lib_s57.h"
 #include "s52_symbol.h"
-#include "s57buildscene.h"
+#include "s57_buildscene.h"
 
 #include <QStringList>
 #include <QDir>
 #include <QGraphicsScene>
 #include <QPainter>
 
-void nextDir(S57BuildScene * _builder, const QString & _dir, bool _scan = false)
+void nextDir(S57_BuildScene * _builder, const QString & _dir, bool _scan = false)
 {
     QStringList _files = QDir(_dir).entryList(QStringList() << "*.000");
     foreach (const QString & _fn, _files)
@@ -45,7 +45,7 @@ QImage render_map_region(const QString & _dir, const QRectF & _map_rgn, int _max
     _image.fill(Qt::white);
     QPainter _p(&_image);
 
-    S57BuildScene _builder;
+    S57_BuildScene _builder;
     QGraphicsScene * _scene = new QGraphicsScene();
     _builder.setScene(_scene);
     nextDir(& _builder, _dir);

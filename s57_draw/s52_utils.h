@@ -25,7 +25,7 @@ typedef enum _S52_MAR_param_t {
     S52_MAR_NUM             = 16    // number of parameters
 } S52_MAR_param_t;
 
-extern double S52_getMarinerParam(S52_MAR_param_t param);
-extern int    S52_setMarinerParam(S52_MAR_param_t param, double val);
+double S52_getMarinerParam(S52_MAR_param_t param);
+int    S52_setMarinerParam(S52_MAR_param_t param, double val);
 
 #endif // S52_UTILS_H

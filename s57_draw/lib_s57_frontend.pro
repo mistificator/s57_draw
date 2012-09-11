@@ -3,8 +3,9 @@ QT       += core gui
 TARGET =    lib_s57_frontend
 TEMPLATE =  app
 
-CONFIG +=   qt console thread
+DESTDIR = ..\s57_bin
 
+CONFIG +=   qt console thread
 
 SOURCES +=\
             lib_s57_frontend_main.cpp

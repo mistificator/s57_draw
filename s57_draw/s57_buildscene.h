@@ -3,7 +3,13 @@
 
 #include <QGraphicsScene>
 
-class S57_BuildScene
+#ifdef LIB_S57_DLL
+    #define LIB_S57_EXPORT __declspec(dllexport)
+#else
+    #define LIB_S57_EXPORT
+#endif
+
+class LIB_S57_EXPORT S57_BuildScene
 {
     S57_BuildScene(const S57_BuildScene &) {}
     S57_BuildScene & operator = (const S57_BuildScene &) { return (* this); }

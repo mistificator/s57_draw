@@ -3,7 +3,7 @@ QT       += core gui
 TARGET =    lib_s57_frontend
 TEMPLATE =  app
 
-DESTDIR = ..\s57_bin
+DESTDIR = ../s57_bin
 
 CONFIG +=   qt console thread
 
@@ -14,6 +14,6 @@ HEADERS  +=\
             lib_s57.h
 
 LIBS +=\
-            ../lib_s57_bin/release/lib_s57.lib
+            ../s57_bin/lib_s57.lib
 
 include (ogr.pri)

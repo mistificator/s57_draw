@@ -8,7 +8,7 @@ QT       += core gui opengl
 
 TARGET =    s57_draw
 TEMPLATE =  app
-DESTDIR = ..\s57_bin
+DESTDIR = ../s57_bin
 
 SOURCES  +=\
             s57_draw_main.cpp \

@@ -2,8 +2,8 @@ QT       += core gui
 
 TARGET =    lib_s57
 TEMPLATE = lib
-DESTDIR = ..\s57_bin
-DLLDESTDIR = ..\s57_bin
+DESTDIR = ../s57_bin
+DLLDESTDIR = ../s57_bin
 
 SOURCES +=\
         lib_s57_main.cpp \

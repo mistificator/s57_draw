@@ -161,10 +161,11 @@ struct S57_BuildScene::Data
 	QMultiMap<QString, style_struct> p_style, l_style, a_style;
 	QMap<int, QGraphicsItemGroup *> groups;
 	QList<QGraphicsItem *> items;
-	Data(): scene(0)
+    double scale;
+    Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0)
 	{
 		RegisterOGRS57();
-        parse_styles();
+        parse_styles(_lookups_path, _symbols_path);
 	}
 	~Data()
 	{
@@ -338,21 +339,29 @@ struct S57_BuildScene::Data
 		_dic.close();
 	}
 
-	void parse_styles()
+    void parse_styles(QString _lookups_path = QString(), QString _symbols_path = QString())
 	{
-        S52_Symbol::global.setSources(QStringList() << qApp->applicationDirPath() + "/s52/symbols/S52RAZDS.rle");
+        if (_lookups_path.isEmpty())
+        {
+            _lookups_path = qApp->applicationDirPath() + "/s52/lookups";
+        }
+        if (_symbols_path.isEmpty())
+        {
+            _symbols_path = qApp->applicationDirPath() + "/s52/symbols";
+        }
+        S52_Symbol::global.setSources(QStringList() << _symbols_path + "/S52RAZDS.rle");
         symbols = S52_Symbol::global.pixmaps();
-        QDir::setCurrent(qApp->applicationDirPath() + "/s52/lookups/points");
+        QDir::setCurrent(_lookups_path + "/points");
 		foreach(const QString & _name, QDir().entryList(QStringList() << "*.dic"))
 		{
 			parse_lookups(_name, p_style);
 		}
-		QDir::setCurrent(qApp->applicationDirPath() + "/s52/lookups/lines");
+        QDir::setCurrent(_lookups_path + "/lines");
 		foreach(const QString & _name, QDir().entryList(QStringList() << "*.dic"))
 		{
 			parse_lookups(_name, l_style);
 		}
-		QDir::setCurrent(qApp->applicationDirPath() + "/s52/lookups/areas");
+        QDir::setCurrent(_lookups_path + "/areas");
 		foreach(const QString & _name, QDir().entryList(QStringList() << "*.dic"))
 		{
 			parse_lookups(_name, a_style);
@@ -695,6 +704,7 @@ struct S57_BuildScene::Data
 	}
 	void updateVisibility(double _scale, bool _exact)
 	{
+        scale = _scale;
 		if (!scene)
 		{
 			return;
@@ -718,6 +728,11 @@ struct S57_BuildScene::Data
 };
 
 S57_BuildScene::S57_BuildScene(): d(new Data())
+{
+
+}
+
+S57_BuildScene::S57_BuildScene(const QString & _lookups_path, const QString & _symbols_path): d(new Data(_lookups_path, _symbols_path))
 {
 
 }
@@ -768,6 +783,11 @@ void S57_BuildScene::updateVisibility(double _scale, bool _exact)
 	d->updateVisibility(_scale, _exact);
 }
 
+double S57_BuildScene::scale() const
+{
+    return d->scale;
+}
+
 int S57_BuildScene::itemsCount() const
 {
 	int _count = 0;
@@ -776,4 +796,12 @@ int S57_BuildScene::itemsCount() const
 		_count += _item->childItems().count();
 	}
 	return (_count);
+}
+
+void S57_BuildScene::setScaleTo(S57_BuildScene * _other)
+{
+    _other->d->updateVisibility(d->scale, false);
+    if (_other->d->scene && d->scene)
+    {
+    }
 }

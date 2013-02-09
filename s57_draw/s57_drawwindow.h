@@ -61,6 +61,7 @@ private:
 	void updateVisibility();
 	void recreateScene();
 	void scaleTo1(double _scale, double _dot_mm = 0.25, double _km_in_deg = 78.715);
+	void precisionAspect();
 };
 
 #endif // S57_DrawWindow_H

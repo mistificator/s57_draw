@@ -98,6 +98,7 @@ void S57_DrawWindow::on_actionOpen_triggered()
 	builder.render();
 	scene->setSceneRect(QRectF());
 	double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
+    precisionAspect();
     ui->S57View->scale(_init_scale, aspect * _init_scale);
 	updateVisibility();
 	ui->S57View->setUpdatesEnabled(true);
@@ -179,6 +180,7 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
 	builder.render();
 	scene->setSceneRect(QRectF());
 	double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
+    precisionAspect();
     ui->S57View->scale(_init_scale, aspect * _init_scale);
 	updateVisibility();
 	progress->close();
@@ -494,3 +496,11 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect12);
     }
 }
+void  S57_DrawWindow::precisionAspect()
+{
+
+    QPointF worldcenter = scene->sceneRect().center();
+    aspect = dabs( 1/cos(worldcenter.y()/180.0*M_PI));
+
+}
+

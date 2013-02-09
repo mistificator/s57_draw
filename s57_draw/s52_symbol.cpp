@@ -7,8 +7,6 @@
 #include <QPainter>
 #include <qmath.h>
 
-S52_Symbol S52_Symbol::global;
-
 #define M 4
 #define N 4
 #define MOD_REC(str)    if(0==qstrncmp(#str,pBuf,4))
@@ -23,20 +21,20 @@ S52_Symbol S52_Symbol::global;
 #define  CIE_x_w                0.295 //0.3333333333          // monitor white point
 #define  CIE_y_w                0.315// 0.3333333333
 #define CIE_D           (       CIE_x_r*(CIE_y_g - CIE_y_b) + \
-                                CIE_x_g*(CIE_y_b - CIE_y_r) + \
-                                CIE_x_b*(CIE_y_r - CIE_y_g)     )
+    CIE_x_g*(CIE_y_b - CIE_y_r) + \
+    CIE_x_b*(CIE_y_r - CIE_y_g)     )
 #define CIE_C_rD        (       (1./CIE_y_w) * \
-                                ( CIE_x_w*(CIE_y_g - CIE_y_b) - \
-                                CIE_y_w*(CIE_x_g - CIE_x_b) + \
-                                CIE_x_g*CIE_y_b - CIE_x_b*CIE_y_g     ) )
+    ( CIE_x_w*(CIE_y_g - CIE_y_b) - \
+    CIE_y_w*(CIE_x_g - CIE_x_b) + \
+    CIE_x_g*CIE_y_b - CIE_x_b*CIE_y_g     ) )
 #define CIE_C_gD        (       (1./CIE_y_w) * \
-                                ( CIE_x_w*(CIE_y_b - CIE_y_r) - \
-                                CIE_y_w*(CIE_x_b - CIE_x_r) - \
-                                CIE_x_r*CIE_y_b + CIE_x_b*CIE_y_r     ) )
+    ( CIE_x_w*(CIE_y_b - CIE_y_r) - \
+    CIE_y_w*(CIE_x_b - CIE_x_r) - \
+    CIE_x_r*CIE_y_b + CIE_x_b*CIE_y_r     ) )
 #define CIE_C_bD        (       (1./CIE_y_w) * \
-                                ( CIE_x_w*(CIE_y_r - CIE_y_g) - \
-                                CIE_y_w*(CIE_x_r - CIE_x_g) + \
-                                CIE_x_r*CIE_y_g - CIE_x_g*CIE_y_r     ) )
+    ( CIE_x_w*(CIE_y_r - CIE_y_g) - \
+    CIE_y_w*(CIE_x_r - CIE_x_g) + \
+    CIE_x_r*CIE_y_g - CIE_x_g*CIE_y_r     ) )
 #define CIE_rf          (CIE_y_r*CIE_C_rD/CIE_D)
 #define CIE_gf          (CIE_y_g*CIE_C_gD/CIE_D)
 #define CIE_bf          (CIE_y_b*CIE_C_bD/CIE_D)
@@ -112,7 +110,7 @@ struct S52_Symbol::Data
         {
             _X = ( _x * _L ) / _y;
             _Y = _L;
-            _Z = ( ( ( 1.0 - _x ) - _y ) * _L ) / _y;           
+            _Z = ( ( ( 1.0 - _x ) - _y ) * _L ) / _y;
         }
         else
         {
@@ -164,7 +162,7 @@ struct S52_Symbol::Data
             }
             _color.rgb = ccie_to_rgb(_color.x, _color.y, _color.L);
             colors[_scheme][_color.s52_name] = _color;
-//            qDebug() << _scheme << _color.s52_name << (0x00ffffff & _color.rgb) << _color.x << _color.y << _color.L;
+            //            qDebug() << _scheme << _color.s52_name << (0x00ffffff & _color.rgb) << _color.x << _color.y << _color.L;
         }
     }
     void parse_symb(QFile & _file)
@@ -219,20 +217,20 @@ struct S52_Symbol::Data
                 _rule.exposition.XPO.append(_line.mid(9).replace(0x1f, ""));
             }
             else
-            if (_cmd_r == "BTM")
-            {
-                _rule.bitmap.BTM.append(_line.mid(9).replace(0x1f, ""));
-            }
-            else
-            if (_cmd_r == "CRF")
-            {
-                _rule.colRef.CRF.append(_line.mid(9).replace(0x1f, ""));
-            }
-            else
-            if (_cmd_r == "VCT")
-            {
-                _rule.vector.VCT.append(_line.mid(9).replace(0x1f, ""));
-            }
+                if (_cmd_r == "BTM")
+                {
+                    _rule.bitmap.BTM.append(_line.mid(9).replace(0x1f, ""));
+                }
+                else
+                    if (_cmd_r == "CRF")
+                    {
+                        _rule.colRef.CRF.append(_line.mid(9).replace(0x1f, ""));
+                    }
+                    else
+                        if (_cmd_r == "VCT")
+                        {
+                            _rule.vector.VCT.append(_line.mid(9).replace(0x1f, ""));
+                        }
         }
         rules[_rule.name.NM] = _rule;
     }
@@ -282,15 +280,15 @@ struct S52_Symbol::Data
             _pm = false;
         }
         else
-        if (_pm)
-        {
-            _p.drawPolygon(_poly);
-            _pm = false;
-        }
-        else
-        {
-            _p.drawPolyline(_poly);
-        }
+            if (_pm)
+            {
+                _p.drawPolygon(_poly);
+                _pm = false;
+            }
+            else
+            {
+                _p.drawPolyline(_poly);
+            }
         _poly.clear();
     }
 
@@ -317,50 +315,50 @@ struct S52_Symbol::Data
                 _p.setPen(QColor(_cmap[_par[2]]));
             }
             else
-            if (_cmd == "SW")
-            {
-                _width = _par.mid(2, 1).toInt();
-                _p.setPen(QPen(_p.pen().color(), _width));
-                if (_width > _max_width)
+                if (_cmd == "SW")
                 {
-                    _max_width = _width;
+                    _width = _par.mid(2, 1).toInt();
+                    _p.setPen(QPen(_p.pen().color(), _width));
+                    if (_width > _max_width)
+                    {
+                        _max_width = _width;
+                    }
                 }
-            }
-            else
-            if (_cmd == "PU")
-            {
-                draw_element(_p, _poly, _ci, _fp, _pm);
-                QList<QByteArray> _pt = _par.mid(2).split(',');
-                for (int _i = 0; _i < _pt.count(); _i +=2 )
-                {
-                    _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
-                }
-            }
-            else
-            if (_cmd == "PD")
-            {
-                QList<QByteArray> _pt = _par.mid(2).split(',');
-                for (int _i = 0; _i < _pt.count(); _i +=2 )
-                {
-                    _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
-                }
-            }
-            else
-            if (_cmd == "CI")
-            {
-                _ci = true;
-                _poly.append(QPointF(_par.mid(2).toInt() * _scale_factor, 0));
-            }
-            else
-            if (_cmd == "FP")
-            {
-                _fp = true;
-            }
-            else
-            if (_cmd == "PM")
-            {
-                _pm = (_par[2] == '2');
-            }
+                else
+                    if (_cmd == "PU")
+                    {
+                        draw_element(_p, _poly, _ci, _fp, _pm);
+                        QList<QByteArray> _pt = _par.mid(2).split(',');
+                        for (int _i = 0; _i < _pt.count(); _i +=2 )
+                        {
+                            _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
+                        }
+                    }
+                    else
+                        if (_cmd == "PD")
+                        {
+                            QList<QByteArray> _pt = _par.mid(2).split(',');
+                            for (int _i = 0; _i < _pt.count(); _i +=2 )
+                            {
+                                _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
+                            }
+                        }
+                        else
+                            if (_cmd == "CI")
+                            {
+                                _ci = true;
+                                _poly.append(QPointF(_par.mid(2).toInt() * _scale_factor, 0));
+                            }
+                            else
+                                if (_cmd == "FP")
+                                {
+                                    _fp = true;
+                                }
+                                else
+                                    if (_cmd == "PM")
+                                    {
+                                        _pm = (_par[2] == '2');
+                                    }
         }
         draw_element(_p, _poly, _ci, _fp, _pm);
         return (_image.copy(0, 0, _w + 2 * _max_width, _h + 2 * _max_width));
@@ -384,20 +382,20 @@ struct S52_Symbol::Data
                 {
                     _file.readLine();
                     continue;
-                }                
+                }
                 if (_line == "COLS")
                 {
                     parse_cols(_file);
                 }
                 else
-                if ((_line == "SYMB") || (_line == "LNST") || (_line == "PATT"))
-                {
-                    parse_symb(_file);
-                }
-                else
-                {
-                    _file.readLine();
-                }
+                    if ((_line == "SYMB") || (_line == "LNST") || (_line == "PATT"))
+                    {
+                        parse_symb(_file);
+                    }
+                    else
+                    {
+                        _file.readLine();
+                    }
             }
             _file.close();
         }
@@ -410,10 +408,10 @@ struct S52_Symbol::Data
                     symbols[_scheme][_rule.name.NM] = render_raster(_scheme, _rule);
                 }
                 else
-                if (QString(_rule.definition.SYDF).compare("V", Qt::CaseInsensitive) == 0)
-                {
-                    symbols[_scheme][_rule.name.NM] = render_vector(_scheme, _rule, 0.025);
-                }
+                    if (QString(_rule.definition.SYDF).compare("V", Qt::CaseInsensitive) == 0)
+                    {
+                        symbols[_scheme][_rule.name.NM] = render_vector(_scheme, _rule, 0.025);
+                    }
             }
         }
     }
@@ -421,6 +419,21 @@ struct S52_Symbol::Data
 
 S52_Symbol::S52_Symbol(): d(new Data())
 {
+}
+
+S52_Symbol::S52_Symbol(const S52_Symbol & _other): d(new Data())
+{
+    * d = * _other.d;
+}
+
+S52_Symbol & S52_Symbol::operator = (const S52_Symbol & _other)
+{
+    if (& _other != this)
+    {
+        d = new Data();
+        * d = * _other.d;
+    }
+    return * this;
 }
 
 S52_Symbol::~S52_Symbol()
@@ -431,7 +444,7 @@ S52_Symbol::~S52_Symbol()
 void S52_Symbol::setSources(const QStringList & _list)
 {
     d->set_sources(_list);
-//    qDebug() << d->symbols.begin()->count() << d->colors.begin()->count();
+    //    qDebug() << d->symbols.begin()->count() << d->colors.begin()->count();
 }
 
 QImage S52_Symbol::image (const QString & _name) const
@@ -525,6 +538,7 @@ QMap<QString, QPixmap> S52_Symbol::pixmaps () const
     return (_pixmaps);
 }
 
+/*
 QImage s52_symbol(const QString & _name)
 {    
     return (S52_Symbol::global.image(_name));
@@ -539,3 +553,4 @@ QRgb s52_symbol_color(const QString & _name)
 {
     return (S52_Symbol::global.symbol_color(_name));
 }
+*/

@@ -25,15 +25,15 @@ static double _MARparamVal[] = {
 
     TRUE,     // SYMPLIFIED_PNT
 
-//    'D',      // S52_MAR_DISP_CATEGORY --DISPLAYBASE
-//    'S',      // S52_MAR_DISP_CATEGORY --STANDARD
+    //    'D',      // S52_MAR_DISP_CATEGORY --DISPLAYBASE
+    //    'S',      // S52_MAR_DISP_CATEGORY --STANDARD
     'O',      // S52_MAR_DISP_CATEGORY --OTHER
 
-//    0,        // S52_MAR_COLOR_PALETTE --DAY_BRIGHT
+    //    0,        // S52_MAR_COLOR_PALETTE --DAY_BRIGHT
     1,        // S52_MAR_COLOR_PALETTE --DAY_BLACKBACK
-//    2,        // S52_MAR_COLOR_PALETTE --DAY_WHITEBACK
-//    3,        // S52_MAR_COLOR_PALETTE --DUSK
-//    4,        // S52_MAR_COLOR_PALETTE --NIGHT
+    //    2,        // S52_MAR_COLOR_PALETTE --DAY_WHITEBACK
+    //    3,        // S52_MAR_COLOR_PALETTE --DUSK
+    //    4,        // S52_MAR_COLOR_PALETTE --NIGHT
 
     16.0      // NUM
 };

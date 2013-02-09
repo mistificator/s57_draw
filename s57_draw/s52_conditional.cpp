@@ -15,7 +15,7 @@ QString DATCVR()
 
 QString DEPARE(double drval1, double drval2, bool drgare)
 {
-   //   Create a string of the proper color reference
+    //   Create a string of the proper color reference
 
     bool shallow  = true;
     QString rule_str =("AC(DEPIT)");
@@ -29,7 +29,7 @@ QString DEPARE(double drval1, double drval2, bool drgare)
     if ((bool)S52_getMarinerParam(S52_MAR_TWO_SHADES))
     {
         if (drval1 >= S52_getMarinerParam(S52_MAR_SAFETY_CONTOUR)  &&
-            drval2 >  S52_getMarinerParam(S52_MAR_SAFETY_CONTOUR))
+                drval2 >  S52_getMarinerParam(S52_MAR_SAFETY_CONTOUR))
         {
             rule_str  = ("AC(DEPDW)");
             shallow = false;
@@ -38,7 +38,7 @@ QString DEPARE(double drval1, double drval2, bool drgare)
     else
     {
         if (drval1 >= S52_getMarinerParam(S52_MAR_SHALLOW_CONTOUR) &&
-            drval2 >  S52_getMarinerParam(S52_MAR_SHALLOW_CONTOUR))
+                drval2 >  S52_getMarinerParam(S52_MAR_SHALLOW_CONTOUR))
         {
             rule_str  = ("AC(DEPMS)");
         }
@@ -60,7 +60,7 @@ QString DEPARE(double drval1, double drval2, bool drgare)
     }
 
 
-//  If object is DRGARE....
+    //  If object is DRGARE....
 
     if(drgare)
     {
@@ -86,10 +86,10 @@ QString DEPCNT(double drval1, double drval2, double valdco, int quapos)
     bool safe = false;
     if (drval1 <= safety_contour)
     {
-          if (drval2 >= safety_contour)
-          {
-              safe = true;
-          }
+        if (drval2 >= safety_contour)
+        {
+            safe = true;
+        }
     }
     else
     {
@@ -100,28 +100,28 @@ QString DEPCNT(double drval1, double drval2, double valdco, int quapos)
     }
     if (0 != quapos)
     {
-          if ( 2 <= quapos && quapos < 10)
-          {
-                if (safe)
-                {
-                      rule_str = (";LS(DASH,2,DEPSC)");
-                }
-                else
-                {
-                      rule_str = (";LS(DASH,1,DEPCN)");
-                }
-          }
+        if ( 2 <= quapos && quapos < 10)
+        {
+            if (safe)
+            {
+                rule_str = (";LS(DASH,2,DEPSC)");
+            }
+            else
+            {
+                rule_str = (";LS(DASH,1,DEPCN)");
+            }
+        }
     }
     else
     {
-          if (safe)
-          {
-                rule_str = (";LS(SOLD,2,DEPSC)");
-          }
-          else
-          {
-                rule_str = (";LS(SOLD,1,DEPCN)");
-          }
+        if (safe)
+        {
+            rule_str = (";LS(SOLD,2,DEPSC)");
+        }
+        else
+        {
+            rule_str = (";LS(SOLD,1,DEPCN)");
+        }
     }
     return rule_str;
 
@@ -369,14 +369,14 @@ QString QUAPOS(int _quapos, int _qualty, int _conrad, int _geom_type, bool _coal
         switch(_qualty)
         {
         case 4:
-              rule_str.append((";SY(QUAPOS01)")); break;      // "PA"
+            rule_str.append((";SY(QUAPOS01)")); break;      // "PA"
         case 5:
-              rule_str.append((";SY(QUAPOS02)")); break;      // "PD"
+            rule_str.append((";SY(QUAPOS02)")); break;      // "PD"
         case 7:
         case 8:
-              rule_str.append((";SY(QUAPOS03)")); break;      // "REP"
+            rule_str.append((";SY(QUAPOS03)")); break;      // "REP"
         default:
-              rule_str.append((";SY(LOWACC03)")); break;      // "?"
+            rule_str.append((";SY(LOWACC03)")); break;      // "?"
         }
         break;
     case wkbLineString:
@@ -480,14 +480,14 @@ QString SLCONS(int _quapos, int _condtn, int _watlev, int _catslc)
                     rule_str = "LS(SOLD,2,CSTLN)";
                 }
                 else
-                if ((_watlev == watlev_always_under_water_or_submerged) || (_watlev == watlev_covers_and_uncovers))
-                {
-                    rule_str = "LS(DASH,2,CSTLN)";
-                }
-                else
-                {
-                    rule_str = "LS(SOLD,2,CSTLN)";
-                }
+                    if ((_watlev == watlev_always_under_water_or_submerged) || (_watlev == watlev_covers_and_uncovers))
+                    {
+                        rule_str = "LS(DASH,2,CSTLN)";
+                    }
+                    else
+                    {
+                        rule_str = "LS(SOLD,2,CSTLN)";
+                    }
             }
         }
     }
@@ -580,19 +580,19 @@ QString RESARE(const QList<int> & _restrn, const QList<int> & _catrea)
                     rule_str = ";SY(ENTRES61)";
                 }
                 else
-                if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
-                {
-                    rule_str = ";SY(ENTRES71)";
-                }
-                else
-                if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
-                {
-                    rule_str = ";SY(ENTRES71)";
-                }
-                else
-                {
-                    rule_str = ";SY(ENTRES51)";
-                }
+                    if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
+                    {
+                        rule_str = ";SY(ENTRES71)";
+                    }
+                    else
+                        if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
+                        {
+                            rule_str = ";SY(ENTRES71)";
+                        }
+                        else
+                        {
+                            rule_str = ";SY(ENTRES51)";
+                        }
             }
 
             if (S52_getMarinerParam(S52_MAR_SYMBOLIZED_BND))
@@ -619,19 +619,19 @@ QString RESARE(const QList<int> & _restrn, const QList<int> & _catrea)
                         rule_str = ";SY(ACHRES61)";
                     }
                     else
-                    if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
-                    {
-                        rule_str = ";SY(ACHRES71)";
-                    }
-                    else
-                    if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
-                    {
-                        rule_str = ";SY(ACHRES71)";
-                    }
-                    else
-                    {
-                        rule_str = ";SY(ACHRES51)";
-                    }
+                        if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
+                        {
+                            rule_str = ";SY(ACHRES71)";
+                        }
+                        else
+                            if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
+                            {
+                                rule_str = ";SY(ACHRES71)";
+                            }
+                            else
+                            {
+                                rule_str = ";SY(ACHRES51)";
+                            }
                 }
 
                 if (S52_getMarinerParam(S52_MAR_SYMBOLIZED_BND))
@@ -652,19 +652,19 @@ QString RESARE(const QList<int> & _restrn, const QList<int> & _catrea)
                         rule_str = ";SY(FSHRES51)";
                     }
                     else
-                    if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
-                    {
-                        rule_str = ";SY(FSHRES71)";
-                    }
-                    else
-                    if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
-                    {
-                        rule_str = ";SY(FSHRES71)";
-                    }
-                    else
-                    {
-                        rule_str = ";SY(FSHRES51)";
-                    }
+                        if (LST_INTS(_restrn, restrn_diving_prohibited << restrn_diving_restricted << restrn_no_wake << restrn_area_to_be_avoided << restrn_construction_prohibited))
+                        {
+                            rule_str = ";SY(FSHRES71)";
+                        }
+                        else
+                            if (LST_INTS(_catrea, catrea_nature_reserve << catrea_bird_sanctuary << catrea_game_reserve << catrea_seal_sanctuary << catrea_navigational_aid_safety_zone << catrea_fish_sanctuary << catrea_no_wake_area << catrea_water_skiing_area))
+                            {
+                                rule_str = ";SY(FSHRES71)";
+                            }
+                            else
+                            {
+                                rule_str = ";SY(FSHRES51)";
+                            }
 
                     if (S52_getMarinerParam(S52_MAR_SYMBOLIZED_BND))
                     {
@@ -864,38 +864,38 @@ QString TOPMAR(int _topshp)
     else
     {
         switch (_topshp) {
-            case topshp_cone_point_up : rule_str = (";SY(TOPMAR02)"); break;
-            case topshp_cone_point_down : rule_str = (";SY(TOPMAR04)"); break;
-            case topshp_sphere : rule_str = (";SY(TOPMAR10)"); break;
-            case topshp_2_spheres : rule_str = (";SY(TOPMAR12)"); break;
-            case topshp_cylinder : rule_str = (";SY(TOPMAR13)"); break;
-            case topshp_board : rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_x_shape_St_Andrews_cross : rule_str = (";SY(TOPMAR65)"); break;
-            case topshp_upright_cross_St_Georges_cross : rule_str = (";SY(TOPMAR17)"); break;
-            case topshp_cube_point_up : rule_str = (";SY(TOPMAR16)"); break;
-            case topshp_2_cones_point_to_point: rule_str = (";SY(TOPMAR08)"); break;
-            case topshp_2_cones_base_to_base: rule_str = (";SY(TOPMAR07)"); break;
-            case topshp_rhombus_diamond: rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_2_cones_points_upward: rule_str = (";SY(TOPMAR05)"); break;
-            case topshp_2_cones_points_downward: rule_str = (";SY(TOPMAR06)"); break;
-            case topshp_flag: rule_str = (";SY(TMARDEF2)"); break;
-            case topshp_sphere_over_rhombus: rule_str = (";SY(TOPMAR10)"); break;
-            case topshp_square: rule_str = (";SY(TOPMAR13)"); break;
-            case topshp_rectangle_horizontal: rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_rectangle_vertical: rule_str = (";SY(TOPMAR13)"); break;
-            case topshp_trapezium_up: rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_trapezium_down: rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_triangle_point_up: rule_str = (";SY(TOPMAR02)"); break;
-            case topshp_triangle_point_down: rule_str = (";SY(TOPMAR04)"); break;
-            case topshp_circle: rule_str = (";SY(TOPMAR10)"); break;
-            case topshp_two_upright_crosses_one_over_the_other: rule_str = (";SY(TOPMAR17)"); break;
-            case topshp_T_shape: rule_str = (";SY(TOPMAR18)"); break;
-            case topshp_triangle_pointing_up_over_a_circle: rule_str = (";SY(TOPMAR02)"); break;
-            case topshp_upright_cross_over_a_circle: rule_str = (";SY(TOPMAR17)"); break;
-            case topshp_rhombus_over_a_circle: rule_str = (";SY(TOPMAR14)"); break;
-            case topshp_circle_over_a_triangle_pointing_up: rule_str = (";SY(TOPMAR10)"); break;
-            case topshp_over_shape: rule_str = (";SY(TMARDEF2)"); break;
-            default: rule_str = (";SY(TMARDEF2)"); break;
+        case topshp_cone_point_up : rule_str = (";SY(TOPMAR02)"); break;
+        case topshp_cone_point_down : rule_str = (";SY(TOPMAR04)"); break;
+        case topshp_sphere : rule_str = (";SY(TOPMAR10)"); break;
+        case topshp_2_spheres : rule_str = (";SY(TOPMAR12)"); break;
+        case topshp_cylinder : rule_str = (";SY(TOPMAR13)"); break;
+        case topshp_board : rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_x_shape_St_Andrews_cross : rule_str = (";SY(TOPMAR65)"); break;
+        case topshp_upright_cross_St_Georges_cross : rule_str = (";SY(TOPMAR17)"); break;
+        case topshp_cube_point_up : rule_str = (";SY(TOPMAR16)"); break;
+        case topshp_2_cones_point_to_point: rule_str = (";SY(TOPMAR08)"); break;
+        case topshp_2_cones_base_to_base: rule_str = (";SY(TOPMAR07)"); break;
+        case topshp_rhombus_diamond: rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_2_cones_points_upward: rule_str = (";SY(TOPMAR05)"); break;
+        case topshp_2_cones_points_downward: rule_str = (";SY(TOPMAR06)"); break;
+        case topshp_flag: rule_str = (";SY(TMARDEF2)"); break;
+        case topshp_sphere_over_rhombus: rule_str = (";SY(TOPMAR10)"); break;
+        case topshp_square: rule_str = (";SY(TOPMAR13)"); break;
+        case topshp_rectangle_horizontal: rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_rectangle_vertical: rule_str = (";SY(TOPMAR13)"); break;
+        case topshp_trapezium_up: rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_trapezium_down: rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_triangle_point_up: rule_str = (";SY(TOPMAR02)"); break;
+        case topshp_triangle_point_down: rule_str = (";SY(TOPMAR04)"); break;
+        case topshp_circle: rule_str = (";SY(TOPMAR10)"); break;
+        case topshp_two_upright_crosses_one_over_the_other: rule_str = (";SY(TOPMAR17)"); break;
+        case topshp_T_shape: rule_str = (";SY(TOPMAR18)"); break;
+        case topshp_triangle_pointing_up_over_a_circle: rule_str = (";SY(TOPMAR02)"); break;
+        case topshp_upright_cross_over_a_circle: rule_str = (";SY(TOPMAR17)"); break;
+        case topshp_rhombus_over_a_circle: rule_str = (";SY(TOPMAR14)"); break;
+        case topshp_circle_over_a_triangle_pointing_up: rule_str = (";SY(TOPMAR10)"); break;
+        case topshp_over_shape: rule_str = (";SY(TMARDEF2)"); break;
+        default: rule_str = (";SY(TMARDEF2)"); break;
         }
     }
     return rule_str;
@@ -969,7 +969,7 @@ QString WRECKS(int _watlev, double _valsou, int _quasou, int _catwrk, int _quapo
         {
             if(_valsou < _safety_contour)    // maybe redundant, seems like wrecks with valsou < 20
             {                                                  // are always coded as "dangerous wrecks"
-                                                              // Excluding (2 == catwrk) matches Caris logic
+                // Excluding (2 == catwrk) matches Caris logic
                 rule_str.append(";SY(DANGER51)");
             }
             else
@@ -988,32 +988,32 @@ QString WRECKS(int _watlev, double _valsou, int _quasou, int _catwrk, int _quapo
             {
                 if (_catwrk == catlit_directional_function && _watlev == watlev_always_under_water_or_submerged)
                 {
-                      rule_str.append(";SY(WRECKS04)");
+                    rule_str.append(";SY(WRECKS04)");
                 }
                 else
                 {
                     if (_catwrk == catwrk_dangerous_wreck && _watlev == watlev_always_under_water_or_submerged)
                     {
-                          rule_str.append(";SY(WRECKS05)");
+                        rule_str.append(";SY(WRECKS05)");
                     }
                     else
                     {
                         if (_catwrk == catwrk_wreck_showing_mast || _catwrk == catwrk_wreck_showing_any_portion_of_hull_or_superstructure)
                         {
-                              rule_str.append(";SY(WRECKS01)");
+                            rule_str.append(";SY(WRECKS01)");
                         }
                         else
                         {
                             if (_watlev == watlev_partly_submerged_at_high_water ||
-                                _watlev == watlev_always_dry ||
-                                _watlev == watlev_covers_and_uncovers ||
-                                _watlev == watlev_awash)
+                                    _watlev == watlev_always_dry ||
+                                    _watlev == watlev_covers_and_uncovers ||
+                                    _watlev == watlev_awash)
                             {
-                                  rule_str.append(";SY(WRECKS01)");
+                                rule_str.append(";SY(WRECKS01)");
                             }
                             else
                             {
-                                  rule_str.append(";SY(WRECKS05)"); // default
+                                rule_str.append(";SY(WRECKS05)"); // default
                             }
                         }
                     }
@@ -1025,25 +1025,25 @@ QString WRECKS(int _watlev, double _valsou, int _quasou, int _catwrk, int _quapo
     case wkbMultiPolygon:
         if (2 <= _quapos && _quapos < 10)
         {
-              rule_str.append(";LC(LOWACC41)");
+            rule_str.append(";LC(LOWACC41)");
         }
         else
         {
             if (_valsou != 0.0){
                 if (_valsou <= 20)
                 {
-                      rule_str.append(";LS(DOTT,2,CHBLK)");
+                    rule_str.append(";LS(DOTT,2,CHBLK)");
                 }
                 else
                 {
-                      rule_str.append(";LS(DASH,2,CHBLK)");
+                    rule_str.append(";LS(DASH,2,CHBLK)");
                 }
             }
             else
             {
                 if (_watlev = watlev_unknown)
                 {
-                      rule_str.append(";LS(DOTT,2,CSTLN)");
+                    rule_str.append(";LS(DOTT,2,CSTLN)");
                 }
                 else
                 {
@@ -1104,40 +1104,40 @@ QVariant get_attribute(OGRFeature * _feat, const QString & _attr_name)
     case OFTInteger:
         return (QVariant::fromValue(_feat->GetFieldAsInteger(_idx)));
     case OFTReal:
-        return (QVariant::fromValue(_feat->GetFieldAsDouble(_idx)));        
+        return (QVariant::fromValue(_feat->GetFieldAsDouble(_idx)));
     case OFTString:
     default:
         return (QVariant::fromValue(QString(_feat->GetFieldAsString(_idx))));
     case OFTIntegerList:
+    {
+        const int * _values = _feat->GetFieldAsIntegerList(_idx, & _count);
+        QList<QVariant> _v;
+        for (int _val_idx = 0; _val_idx < _count; _val_idx++)
         {
-            const int * _values = _feat->GetFieldAsIntegerList(_idx, & _count);
-            QList<QVariant> _v;
-            for (int _val_idx = 0; _val_idx < _count; _val_idx++)
-            {
-                _v << QVariant::fromValue(_values[_val_idx]);
-            }
-            return (_v);
+            _v << QVariant::fromValue(_values[_val_idx]);
         }
+        return (_v);
+    }
     case OFTRealList:
+    {
+        const double * _values = _feat->GetFieldAsDoubleList(_idx, & _count);
+        QList<QVariant> _v;
+        for (int _val_idx = 0; _val_idx < _count; _val_idx++)
         {
-            const double * _values = _feat->GetFieldAsDoubleList(_idx, & _count);
-            QList<QVariant> _v;
-            for (int _val_idx = 0; _val_idx < _count; _val_idx++)
-            {
-                _v << QVariant::fromValue(_values[_val_idx]);
-            }
-            return (_v);
+            _v << QVariant::fromValue(_values[_val_idx]);
         }
+        return (_v);
+    }
     case OFTStringList:
+    {
+        char ** _values = _feat->GetFieldAsStringList(_idx);
+        QList<QVariant> _v;
+        while (_values)
         {
-            char ** _values = _feat->GetFieldAsStringList(_idx);
-            QList<QVariant> _v;
-            while (_values)
-            {
-                _v << QVariant::fromValue(QString(* _values++));
-            }
-            return (_v);
+            _v << QVariant::fromValue(QString(* _values++));
         }
+        return (_v);
+    }
     }
     return (QVariant());
 }
@@ -1177,29 +1177,29 @@ bool lists_intersects(const QList<T> & _l1, const QList<T> & _l2)
 
 namespace S52_CS
 {
-    QString translate(const QString & _layer_name, const QString & _cs, OGRFeature * _feat, int _collection_idx)
+QString translate(const QString & _layer_name, const QString & _cs, OGRFeature * _feat, int _collection_idx)
+{
+    QString _translated_cs;
+    if (_feat == 0)
     {
-        QString _translated_cs;
-        if (_feat == 0)
-        {
-            return _translated_cs;
-        }
+        return _translated_cs;
+    }
 
-        OGRGeometry * _geom = _feat->GetGeometryRef();
-        if ((_collection_idx > 0) && (dynamic_cast<OGRGeometryCollection *>(_geom)))
+    OGRGeometry * _geom = _feat->GetGeometryRef();
+    if ((_collection_idx > 0) && (dynamic_cast<OGRGeometryCollection *>(_geom)))
+    {
+        if (_collection_idx < ((OGRGeometryCollection *)_geom)->getNumGeometries())
         {
-            if (_collection_idx < ((OGRGeometryCollection *)_geom)->getNumGeometries())
-            {
-                _geom = ((OGRGeometryCollection *)_geom)->getGeometryRef(_collection_idx);
-            }
+            _geom = ((OGRGeometryCollection *)_geom)->getGeometryRef(_collection_idx);
         }
-        const int _wkb = wkbFlatten(_geom->getGeometryType());
+    }
+    const int _wkb = wkbFlatten(_geom->getGeometryType());
 
-        if (CHECK_CS("DATCVR"))
-        {
-            _translated_cs = DATCVR();
-        }
-        else
+    if (CHECK_CS("DATCVR"))
+    {
+        _translated_cs = DATCVR();
+    }
+    else
         if (CHECK_CS("DEPARE"))
         {
             _translated_cs = DEPARE(
@@ -1208,89 +1208,89 @@ namespace S52_CS
                         CHECK_LY("DRGARE"));
         }
         else
-        if (CHECK_CS("DEPCNT"))
-        {
-            _translated_cs = DEPCNT(
-                        DBL_ATTR("DRVAL1"),
-                        DBL_ATTR("DRVAL2"),
-                        DBL_ATTR("VALDCO"),
-                        INT_ATTR("QUAPOS"));
-        }
-        else
-        if (CHECK_CS("LIGHTS"))
-        {
-            _translated_cs = LIGHTS(
-                        DBL_ATTR("VALNMR"),
-                        INT_ATTR("CATLIT"),
-                        INT_ATTR("LITVIS"),
-                        INT_ATTR("COLOUR"),
-                        DBL_ATTR("SECTR1"),
-                        DBL_ATTR("SECTR2"));
-        }
-        else
-        if (CHECK_CS("SOUNDG"))
-        {
-            switch (_wkb)
+            if (CHECK_CS("DEPCNT"))
             {
-            case wkbPoint:
-            case wkbMultiPoint:
-                _translated_cs = SOUNDG(
-                            INT_ATTR("QUASOU"),
-                            INT_ATTR("TECSOU"),
-                            ((OGRPoint *)_geom)->getZ());
-                break;
+                _translated_cs = DEPCNT(
+                            DBL_ATTR("DRVAL1"),
+                            DBL_ATTR("DRVAL2"),
+                            DBL_ATTR("VALDCO"),
+                            INT_ATTR("QUAPOS"));
             }
-        }
-        else
-        if (CHECK_CS("QUAPOS"))
-        {
-            _translated_cs = QUAPOS(
-                        INT_ATTR("QUAPOS"),
-                        INT_ATTR("QUALTY"),
-                        INT_ATTR("CONRAD"),
-                        _wkb,
-                        CHECK_LY("COALNE"));
-        }
-        else
-        if (CHECK_CS("SLCONS"))
-        {
-            _translated_cs = SLCONS(
-                        INT_ATTR("QUAPOS"),
-                        INT_ATTR("CONDTN"),
-                        INT_ATTR("WATLEV"),
-                        INT_ATTR("CATSLC")
-                        );
-        }
-        else
-        if (CHECK_CS("RESARE"))
-        {
-            _translated_cs = RESARE(
-                        split_str_attr_as_int<int>(STR_ATTR("RESTRN")),
-                        split_str_attr_as_int<int>(STR_ATTR("CATREA")));
-        }
-        else
-        if (CHECK_CS("RESTRN"))
-        {
-            _translated_cs = RESTRN(
-                        split_str_attr_as_int<int>(STR_ATTR("RESTRN")));
-        }
-        else
-        if (CHECK_CS("TOPMAR"))
-        {
-            _translated_cs = TOPMAR(
-                        INT_ATTR("TOPSHP"));
-        }
-        else
-        if (CHECK_CS("WRECKS"))
-        {
-            _translated_cs = WRECKS(
-                        INT_ATTR("WATLEV"),
-                        DBL_ATTR("VALSOU"),
-                        INT_ATTR("QUASOU"),
-                        INT_ATTR("CATWRK"),
-                        INT_ATTR("QUAPOS"),
-                        _wkb);
-        }
-        return _translated_cs;
-    }
+            else
+                if (CHECK_CS("LIGHTS"))
+                {
+                    _translated_cs = LIGHTS(
+                                DBL_ATTR("VALNMR"),
+                                INT_ATTR("CATLIT"),
+                                INT_ATTR("LITVIS"),
+                                INT_ATTR("COLOUR"),
+                                DBL_ATTR("SECTR1"),
+                                DBL_ATTR("SECTR2"));
+                }
+                else
+                    if (CHECK_CS("SOUNDG"))
+                    {
+                        switch (_wkb)
+                        {
+                        case wkbPoint:
+                        case wkbMultiPoint:
+                            _translated_cs = SOUNDG(
+                                        INT_ATTR("QUASOU"),
+                                        INT_ATTR("TECSOU"),
+                                        ((OGRPoint *)_geom)->getZ());
+                            break;
+                        }
+                    }
+                    else
+                        if (CHECK_CS("QUAPOS"))
+                        {
+                            _translated_cs = QUAPOS(
+                                        INT_ATTR("QUAPOS"),
+                                        INT_ATTR("QUALTY"),
+                                        INT_ATTR("CONRAD"),
+                                        _wkb,
+                                        CHECK_LY("COALNE"));
+                        }
+                        else
+                            if (CHECK_CS("SLCONS"))
+                            {
+                                _translated_cs = SLCONS(
+                                            INT_ATTR("QUAPOS"),
+                                            INT_ATTR("CONDTN"),
+                                            INT_ATTR("WATLEV"),
+                                            INT_ATTR("CATSLC")
+                                            );
+                            }
+                            else
+                                if (CHECK_CS("RESARE"))
+                                {
+                                    _translated_cs = RESARE(
+                                                split_str_attr_as_int<int>(STR_ATTR("RESTRN")),
+                                                split_str_attr_as_int<int>(STR_ATTR("CATREA")));
+                                }
+                                else
+                                    if (CHECK_CS("RESTRN"))
+                                    {
+                                        _translated_cs = RESTRN(
+                                                    split_str_attr_as_int<int>(STR_ATTR("RESTRN")));
+                                    }
+                                    else
+                                        if (CHECK_CS("TOPMAR"))
+                                        {
+                                            _translated_cs = TOPMAR(
+                                                        INT_ATTR("TOPSHP"));
+                                        }
+                                        else
+                                            if (CHECK_CS("WRECKS"))
+                                            {
+                                                _translated_cs = WRECKS(
+                                                            INT_ATTR("WATLEV"),
+                                                            DBL_ATTR("VALSOU"),
+                                                            INT_ATTR("QUASOU"),
+                                                            INT_ATTR("CATWRK"),
+                                                            INT_ATTR("QUAPOS"),
+                                                            _wkb);
+                                            }
+    return _translated_cs;
+}
 }

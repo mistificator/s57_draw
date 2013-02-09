@@ -9,6 +9,9 @@
 class S52_Symbol
 {
 public:
+    S52_Symbol();
+    S52_Symbol(const S52_Symbol &);
+    S52_Symbol & operator = (const S52_Symbol &);
     ~S52_Symbol();
     void setSources(const QStringList & _list);
     QImage image (const QString & _name) const;
@@ -25,15 +28,9 @@ public:
     QMap<QString, QImage> images() const;
     QMap<QString, QPixmap> pixmaps() const;
 
-    static S52_Symbol global;
 private:
-    S52_Symbol();
     struct Data;
     Data * d;
 };
-
-QImage s52_symbol(const QString & _name);
-QRgb s52_color(const QString & _name);
-QRgb s52_symbol_color(const QString & _name);
 
 #endif // S52_SYMBOL_H

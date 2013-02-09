@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QGraphicsScene>
 #include <QPainter>
+#include <QApplication>
 
 void nextDir(S57_BuildScene * _builder, const QString & _dir, bool _scan = false)
 {
@@ -43,17 +44,18 @@ QImage render_map_region(const QString & _dir, const QRectF & _map_rgn, int _max
     }
     QImage _image(_width, _height, QImage::Format_RGB32);
     _image.fill(Qt::white);
-    QPainter _p(&_image);
 
+    QPainter _p(&_image);
     S57_BuildScene _builder;
-    QGraphicsScene * _scene = new QGraphicsScene();
-    _builder.setScene(_scene);
+    QGraphicsScene _scene;
+    _builder.setScene(& _scene);
     nextDir(& _builder, _dir);
     _builder.render();
     if (_land_and_sea_only)
     {
         _builder.updateVisibility(0x7fffffff, true);
     }
-    _scene->render(& _p, QRectF(), _map_rgn);
+    _scene.render(&_p, QRectF(), _map_rgn);
+    _p.end();
     return _image;
 }

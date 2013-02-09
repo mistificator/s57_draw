@@ -9,6 +9,7 @@
     #define LIB_S57_EXPORT
 #endif
 
+class S52_Symbol;
 class LIB_S57_EXPORT S57_BuildScene
 {
     S57_BuildScene(const S57_BuildScene &) {}
@@ -26,6 +27,7 @@ public:
 	int itemsCount() const;
 
     void setScaleTo(S57_BuildScene * _other);
+    S52_Symbol & s52() const;
 private:
 	struct Data;
 	Data * d;

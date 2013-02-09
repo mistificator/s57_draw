@@ -28,8 +28,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionColorScheme->setMenu(new QMenu());
     QActionGroup * _ag = new QActionGroup(this);
 
-    QString _def_scheme = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("scheme", S52_Symbol::global.colorScheme()).toString();
-    foreach (const QString & _scheme, S52_Symbol::global.colorSchemes())
+    QString _def_scheme = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("scheme", builder.s52().colorScheme()).toString();
+    foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
         QAction * _action = ui->actionColorScheme->menu()->addAction(_scheme, this, SLOT(colorSchemeChanged()));
         _action->setActionGroup(_ag);
@@ -57,6 +57,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         ui->action_aspect_1_2->setChecked(true);
         on_action_aspect_1_2_triggered();
     }
+
+    S57_BuildScene * b_test = new S57_BuildScene();
 }
 
 S57_DrawWindow::~S57_DrawWindow()
@@ -421,7 +423,7 @@ void S57_DrawWindow::colorSchemeChanged()
     {
         return;
     }
-    S52_Symbol::global.setColorScheme(_action->text());
+    builder.s52().setColorScheme(_action->text());
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("scheme", _action->text());
 }
 
@@ -438,9 +440,9 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
     QDir().mkpath(_path);
 
     int _total = 0, _count = 0;
-    foreach (const QString & _scheme, S52_Symbol::global.colorSchemes())
+    foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
-        foreach (const QString & _symbol, S52_Symbol::global.symbols(S52_Symbol::global.colorScheme()))
+        foreach (const QString & _symbol, builder.s52().symbols(builder.s52().colorScheme()))
         {
             _total++;
         }
@@ -449,15 +451,15 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
     progress->setWindowTitle("Rendering symbols");
     progress->setWindowModality(Qt::WindowModal);
 
-    foreach (const QString & _scheme, S52_Symbol::global.colorSchemes())
+    foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
         QString _path_scheme = _path + "/" + _scheme;
         QDir().mkpath(_path_scheme);
-        foreach (const QString & _symbol, S52_Symbol::global.symbols(S52_Symbol::global.colorScheme()))
+        foreach (const QString & _symbol, builder.s52().symbols(builder.s52().colorScheme()))
         {
             progress->setLabelText(_path_scheme + "/" + _symbol + ".PNG");
             progress->setValue(_count);
-            s52_symbol(_symbol).save(_path_scheme + "/" + _symbol + ".PNG");
+            builder.s52().image(_symbol).save(_path_scheme + "/" + _symbol + ".PNG");
             _count++;
             qApp->processEvents();
             if (progress->wasCanceled())

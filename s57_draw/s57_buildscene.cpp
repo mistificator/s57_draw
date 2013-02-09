@@ -162,9 +162,17 @@ struct S57_BuildScene::Data
 	QMap<int, QGraphicsItemGroup *> groups;
 	QList<QGraphicsItem *> items;
     double scale;
+    struct RegisterS57_Helper
+    {
+        RegisterS57_Helper()
+        {
+            RegisterOGRS57();
+        }
+    };
+
     Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0)
 	{
-		RegisterOGRS57();
+        static RegisterS57_Helper reg_s57;
         parse_styles(_lookups_path, _symbols_path);
 	}
 	~Data()

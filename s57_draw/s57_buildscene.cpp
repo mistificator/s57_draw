@@ -349,6 +349,7 @@ struct S57_BuildScene::Data
     }
     void parse_lookups(QString _lookups_path = QString())
     {
+        QString _saved_current = QDir::currentPath();
         if (_lookups_path.isEmpty())
         {
             _lookups_path = qApp->applicationDirPath() + "/s52/lookups";
@@ -368,6 +369,7 @@ struct S57_BuildScene::Data
         {
             parse_lookup_file(_name, a_style);
         }
+        QDir::setCurrent(_saved_current);
     }
     void parse_styles(QString _lookups_path = QString(), QString _symbols_path = QString())
     {
@@ -773,10 +775,12 @@ void S57_BuildScene::setScene(QGraphicsScene * _scene)
 
 void S57_BuildScene::build(const QString & _file_name)
 {
+    QString _saved_current = QDir::currentPath();
     QDir::setCurrent(qApp->applicationDirPath() + "/s57/classes");
     OGRDataSource * _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
     d->build(_ds);
     delete _ds;
+    QDir::setCurrent(_saved_current);
 }
 
 void S57_BuildScene::render()

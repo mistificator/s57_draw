@@ -16,7 +16,6 @@ HEADERS  +=\
         s52_symbol.h \
         s52_utils.h \
         s57_buildscene.h \
-        s57_drawwindow.h \
         s52_conditional.h \
         lib_s57.h
 

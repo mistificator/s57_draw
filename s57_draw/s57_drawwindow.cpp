@@ -104,6 +104,7 @@ void S57_DrawWindow::on_actionOpen_triggered()
     builder.render();
     scene->setSceneRect(QRectF());
     double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
+    precisionAspect();
     ui->S57View->scale(_init_scale, aspect * _init_scale);
     updateVisibility();
     circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
@@ -191,6 +192,7 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
     builder.render();
     scene->setSceneRect(QRectF());
     double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
+    precisionAspect();
     ui->S57View->scale(_init_scale, aspect * _init_scale);
     updateVisibility();
     circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
@@ -550,4 +552,10 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
         ui->S57View->scale(1.0, 2.0);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect12);
     }
+}
+
+void  S57_DrawWindow::precisionAspect()
+{
+    QPointF worldcenter = scene->sceneRect().center();
+    aspect = qAbs<double>(1.0 / cos(worldcenter.y()/180.0*M_PI));
 }

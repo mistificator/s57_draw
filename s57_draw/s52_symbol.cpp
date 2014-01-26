@@ -308,6 +308,10 @@ struct S52_Symbol::Data
         bool _ci = false, _fp = false, _pm = false;
         foreach (const QByteArray & _par, _rule.vector.VCT.split(';'))
         {
+            if (_par.count() <= 2)
+            {
+                continue;
+            }
             const QByteArray _cmd = _par.left(2).toUpper();
             if (_cmd == "SP")
             {
@@ -329,18 +333,18 @@ struct S52_Symbol::Data
                     {
                         draw_element(_p, _poly, _ci, _fp, _pm);
                         QList<QByteArray> _pt = _par.mid(2).split(',');
-                        for (int _i = 0; _i < _pt.count(); _i +=2 )
+                        for (int _i = 1; _i < _pt.count(); _i +=2 )
                         {
-                            _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
+                            _poly.append(QPointF(_pt[_i - 1].toInt() * _scale_factor - _x, _pt[_i].toInt() * _scale_factor - _y));
                         }
                     }
                     else
                         if (_cmd == "PD")
                         {
                             QList<QByteArray> _pt = _par.mid(2).split(',');
-                            for (int _i = 0; _i < _pt.count(); _i +=2 )
+                            for (int _i = 1; _i < _pt.count(); _i +=2 )
                             {
-                                _poly.append(QPointF(_pt[_i].toInt() * _scale_factor - _x, _pt[_i + 1].toInt() * _scale_factor - _y));
+                                _poly.append(QPointF(_pt[_i - 1].toInt() * _scale_factor - _x, _pt[_i].toInt() * _scale_factor - _y));
                             }
                         }
                         else

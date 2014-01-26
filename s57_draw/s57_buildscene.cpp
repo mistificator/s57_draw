@@ -789,7 +789,6 @@ void S57_BuildScene::render()
     {
         return;
     }
-    d->scene->clear();
     foreach (QGraphicsItem * _item, d->items)
     {
         d->scene->addItem(_item);

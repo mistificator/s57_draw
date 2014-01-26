@@ -377,7 +377,7 @@ struct S57_BuildScene::Data
         {
             _symbols_path = qApp->applicationDirPath() + "/s52/symbols";
         }
-        s52.setSources(QStringList() << _symbols_path + "/S52RAZDS.rle");
+        s52.setSources(QStringList() << _symbols_path + "/S52RAZDS.RLE");
         symbols = s52.pixmaps();
         parse_lookups(_lookups_path);
     }

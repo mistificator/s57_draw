@@ -951,7 +951,7 @@ int S57_BuildScene::itemsCount() const
     int _count = 0;
     foreach (QGraphicsItem * _item, d->items)
     {
-        _count += _item->children().count();
+        _count += _item->childItems().count();
     }
     return (_count);
 }

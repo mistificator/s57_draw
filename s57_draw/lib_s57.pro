@@ -1,7 +1,11 @@
 QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET =    lib_s57
+win32:TARGET =    lib_s57
+unix:TARGET =    _s57
+
+unix:CONFIG += staticlib
+
 TEMPLATE = lib
 DESTDIR = ../s57_bin
 DLLDESTDIR = ../s57_bin

@@ -3,7 +3,7 @@
 
 #include <QGraphicsScene>
 
-#ifdef LIB_S57_DLL
+#if defined(_WIN32) && defined(LIB_S57_DLL) && !defined(LIB_S57_EXPORT)
     #define LIB_S57_EXPORT __declspec(dllexport)
 #else
     #define LIB_S57_EXPORT

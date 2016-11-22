@@ -1,4 +1,5 @@
 QT       += core gui
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET =    lib_s57_frontend
 TEMPLATE =  app
@@ -20,5 +21,7 @@ win32:LIBS +=\
 unix:LIBS +=\
             ../s57_bin/lib_s57.a \
             ../s57_bin/lib_prti99.a
+
+unix:QMAKE_LFLAGS += -ldl
 
 include (ogr.pri)

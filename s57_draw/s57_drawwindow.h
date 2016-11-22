@@ -44,6 +44,8 @@ private slots:
     void on_actionExport_symbols_triggered();
     void on_action_aspect_1_1_triggered();
     void on_action_aspect_1_2_triggered();
+	void on_actionFullview_triggered();
+	void on_actionTooltips_triggered(bool);
 private:
     Ui::S57_DrawWindow * ui;
     QGraphicsScene * scene;
@@ -62,7 +64,7 @@ private:
     void updateVisibility();
     void recreateScene();
     void scaleTo1(double _scale, double _dot_mm = 0.25, double _km_in_deg = 78.715);
-    void precisionAspect();
+    double precisionAspect();
 };
 
 #endif // S57_DrawWindow_H

@@ -7,7 +7,7 @@
 #include <QMultiMap>
 #include <QStringList>
 #include <QRegExp>
-#include <QCoreApplication>
+#include <QApplication>
 #include <QDebug>
 #include <QPainter>
 #include <QGraphicsView>
@@ -16,6 +16,10 @@
 #ifdef DBG_PRINT
 #include <QMessageBox>
 #endif
+
+#include "lib_prti99.h"
+
+double mercator_sretch = 1.0;
 
 class QFixedPixmapItem: public QGraphicsItem
 {
@@ -160,7 +164,7 @@ struct S57_BuildScene::Data
         QString * category;
     };
     QMultiMap<QString, style_struct> p_style, l_style, a_style;
-    QMap<int, QGraphicsItemGroup *> groups;
+    QMap<qint64, QGraphicsItemGroup *> groups;
     QList<QGraphicsItem *> items;
     double scale;
     struct RegisterS57_Helper
@@ -168,6 +172,7 @@ struct S57_BuildScene::Data
         RegisterS57_Helper()
         {
             RegisterOGRS57();
+            RegisterOGRPRTI99();
         }
     };
 
@@ -315,7 +320,7 @@ struct S57_BuildScene::Data
         QStringList _attr = QString(_p[1])./*replace("?", "").*/split("|", QString::SkipEmptyParts);
         QString _key = QString(_p[0]).toUpper();
         style_struct * _s = 0;
-        for (QMap<QString, style_struct>::iterator _i = _style->begin(); _i != _style->end(); _i++)
+        for (QMultiMap<QString, style_struct>::iterator _i = _style->begin(); _i != _style->end(); _i++)
         {
             if ((_i.key() == _key) && (*_i.value().attributes == _attr))
             {
@@ -352,7 +357,7 @@ struct S57_BuildScene::Data
         QString _saved_current = QDir::currentPath();
         if (_lookups_path.isEmpty())
         {
-            _lookups_path = qApp->applicationDirPath() + "/s52/lookups";
+			_lookups_path = QApplication::instance()->applicationDirPath() + "/s52/lookups";
         }
         QDir::setCurrent(_lookups_path + "/points");
         foreach(const QString & _name, QDir().entryList(QStringList() << "*.dic"))
@@ -384,6 +389,10 @@ struct S57_BuildScene::Data
 
     QVariant get_attribute(OGRFeature * _feat, const QString & _attr_name)
     {
+		if (_feat == 0)
+		{
+			return QVariant();
+		}
         int _idx = _feat->GetFieldIndex(_attr_name.toUpper().toLocal8Bit());
         if (_idx < 0)
         {
@@ -481,8 +490,10 @@ struct S57_BuildScene::Data
             bool _ok = true;
             foreach (const QString & _attr_name, *_s.attributes)
             {
-                QVariant _attr_val = get_attribute(_feat, _attr_name);
-                if (!_attr_val.isValid())
+//                QVariant _attr_val = get_attribute(_feat, _attr_name);
+//				if (!_attr_val.isValid())
+                QVariant _attr_val = get_attribute(_feat, _attr_name.left(6));
+				if (_attr_val.toInt() == 0 || _attr_val.toInt() != _attr_name.mid(6).toInt())
                 {
                     _ok = false;
                     break;
@@ -533,7 +544,7 @@ struct S57_BuildScene::Data
         return (& symbols[_complex_symbol]);
     }
 
-    QGraphicsItem * addToGroup(int _scamin, QGraphicsItem * _item, QList<QGraphicsItem *> & _items)
+    QGraphicsItem * addToGroup(qint64 _scamin, QGraphicsItem * _item, QList<QGraphicsItem *> & _items)
     {
         if (_scamin == 0)
         {
@@ -551,10 +562,21 @@ struct S57_BuildScene::Data
         return (_g);
     }
 
-    void build(OGRDataSource * _ds)
+    void build_s57(OGRDataSource * _ds)
     {
         QList<QGraphicsItem *> _items;
-        qint64 _z_offset = get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toInt();
+//        qDebug() << "We're in build_s57!";
+        if (!_ds)
+        {
+            return;
+        }
+        qDebug() << "Datasource has" << _ds->GetLayerCount() << "layers";
+        qint64 _z_offset = _ds->GetLayerByName("DSID") ? get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toLongLong() : 0;
+		if (_z_offset == 0)
+		{
+			_z_offset = _ds->GetLayerByName("M_CSCL") ? get_attribute(_ds->GetLayerByName("M_CSCL")->GetNextFeature(), "CSCALE").toLongLong() : 0;
+		}
+        qDebug() << "z_offset = " << _z_offset;
         for (int _idx = 0; _idx < _ds->GetLayerCount(); _idx++)
         {
             OGRLayer * _layer = _ds->GetLayer(_idx);
@@ -566,17 +588,21 @@ struct S57_BuildScene::Data
             {
                 if (OGRGeometry * _geom = _feat->GetGeometryRef())
                 {
-                    OGRPoint _p1, _p2;
+                    OGRPoint _p1, _p2, pt;
                     OGRPoint * _p;
                     OGRLineString * _l;
                     QPolygonF _poly;
                     OGRLinearRing * _r;
                     QPixmap * _pixmap;
+					QPainterPath path;
+					QVector<QPolygonF> _mpoly;
                     double _sum_x, _sum_y;
+					int _sum_count;
                     const int _wkb = wkbFlatten(_geom->getGeometryType());
                     style_struct _s = apply_rule(_feat, _layer_name);
-                    const int _scamin = get_attribute(_feat, "SCAMIN").toInt();
-                    if (((_scamin > 0) || _ignore_group) && ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull())))
+                    const qint64 _scamin = get_attribute(_feat, "SCAMIN").toLongLong();
+					const QString _tooltip = _layer_name + "\nSCAMIN " + QString::number(_scamin) + "\nCSCL " + QString::number(_z_offset);
+                    if (((_scamin > 0 && _scamin < 0x7fffffff) || _ignore_group) && ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull())))
                     {
                         switch (_wkb)
                         {
@@ -585,11 +611,12 @@ struct S57_BuildScene::Data
                             {
                                 _item = new QFixedPixmapItem();
                                 addToGroup(_scamin, _item, _items);
-                                _item->setPos(((OGRPoint *)_geom)->getX(), -((OGRPoint *)_geom)->getY());
+                                _item->setPos(((OGRPoint *)_geom)->getX(), -((OGRPoint *)_geom)->getY()*mercator_sretch);
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                 _item->setZValue(20 + _s.priority - _z_offset);
+								_item->setToolTip(_tooltip);
                             }
                             break;
                         case wkbMultiPoint:
@@ -600,11 +627,12 @@ struct S57_BuildScene::Data
                                     _p = (OGRPoint *)((OGRMultiPoint *)_geom)->getGeometryRef(_idx);
                                     _item = new QFixedPixmapItem();
                                     addToGroup(_scamin, _item, _items);
-                                    _item->setPos(_p->getX(), -_p->getY());
+                                    _item->setPos(_p->getX(), -_p->getY()*mercator_sretch);
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                     ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                     _item->setZValue(20 + _s.priority - _z_offset);
+									_item->setToolTip(_tooltip);
                                 }
                                 _s = apply_rule(_feat, _layer_name, _idx);
                             }
@@ -613,19 +641,29 @@ struct S57_BuildScene::Data
                             _l = ((OGRLineString *)_geom);
                             _l->StartPoint(&_p1);
                             _l->EndPoint(& _p2);
-                            _item = new QGraphicsLineItem(_p1.getX(), -_p1.getY(), _p2.getX(), -_p2.getY());
-                            addToGroup(_scamin, _item, _items);
-                            ((QGraphicsLineItem *)_item)->setPen(*_s.pen);
+							path = QPainterPath();
+							_l->getPoint(0, & pt);
+							path.moveTo(pt.getX(), -pt.getY()*mercator_sretch);
+							for (int p_i = 1; p_i < _l->getNumPoints(); p_i++)
+							{
+								_l->getPoint(p_i, & pt);
+								path.lineTo(pt.getX(), -pt.getY()*mercator_sretch);
+							}
+                            _item = new QGraphicsPathItem(path);
+							addToGroup(_scamin, _item, _items);
+                            ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
                             _item->setZValue(10 + _s.priority - _z_offset);
+							_item->setToolTip(_tooltip);
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
                                 addToGroup(_scamin, _item, _items);
-                                _item->setPos((_p1.getX() + _p2.getX()) / 2, -(_p1.getY() + _p2.getY()) / 2);
+                                _item->setPos(path.pointAtPercent(0.5));
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                 _item->setZValue(20 + _s.priority - _z_offset);
+								_item->setToolTip(_tooltip);
                             }
                             break;
                         case wkbMultiLineString:
@@ -634,19 +672,29 @@ struct S57_BuildScene::Data
                                 _l = (OGRLineString *)((OGRMultiLineString *)_geom)->getGeometryRef(_idx);
                                 _l->StartPoint(&_p1);
                                 _l->EndPoint(& _p2);
-                                _item = new QGraphicsLineItem(_p1.getX(), -_p1.getY(), _p2.getX(), -_p2.getY());
+								path = QPainterPath();
+								_l->getPoint(0, & pt);
+								path.moveTo(pt.getX(), -pt.getY()*mercator_sretch);
+								for (int p_i = 1; p_i < _l->getNumPoints(); p_i++)
+								{
+									_l->getPoint(p_i, & pt);
+									path.lineTo(pt.getX(), -pt.getY()*mercator_sretch);
+								}
+                                _item = new QGraphicsPathItem(path);
                                 addToGroup(_scamin, _item, _items);
-                                ((QGraphicsLineItem *)_item)->setPen(*_s.pen);
+                                ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
                                 _item->setZValue(10 + _s.priority - _z_offset);
+								_item->setToolTip(_tooltip);
                                 if (!_s.symbol->isEmpty())
                                 {
                                     _item = new QFixedPixmapItem();
                                     addToGroup(_scamin, _item, _items);
-                                    _item->setPos((_p1.getX() + _p2.getX()) / 2, -(_p1.getY() + _p2.getY()) / 2);
+                                    _item->setPos(path.pointAtPercent(0.5));
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                     ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                     _item->setZValue(20 + _s.priority - _z_offset);
+									_item->setToolTip(_tooltip);
                                 }
                                 _s = apply_rule(_feat, _layer_name, _idx);
                             }
@@ -654,66 +702,99 @@ struct S57_BuildScene::Data
                         case wkbPolygon:
                             _poly.clear();
                             _r = ((OGRPolygon *)_geom)->getExteriorRing();
-                            _sum_x = 0; _sum_y = 0;
+                            _sum_x = 0; _sum_y = 0; _sum_count = 0;
                             for (int _idx = 0; _idx < _r->getNumPoints(); _idx++)
                             {
                                 _r->getPoint(_idx, & _p1);
-                                _poly.append(QPointF(_p1.getX(), -_p1.getY()));
+                                _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
                                 _sum_x += _p1.getX();
-                                _sum_y += _p1.getY();
+                                _sum_y += _p1.getY()*mercator_sretch;
+								_sum_count++;
                             }
-                            _poly.append(_poly[0]);
-                            _item = new QGraphicsPolygonItem(_poly);
-                            addToGroup(_scamin, _item, _items);
-                            ((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
-                            ((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
-                            _item->setZValue(_s.priority - _z_offset);
+//	                        _poly.append(_poly[0]);
+							_item = new QGraphicsPolygonItem(_poly);
+							addToGroup(_scamin, _item, _items);
+							((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
+							if (_poly.front() == _poly.back())
+							{
+								((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
+							}
+							_item->setZValue(_s.priority - _z_offset);
+							_item->setToolTip(_tooltip);
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
                                 addToGroup(_scamin, _item, _items);
-                                _item->setPos(_sum_x / _r->getNumPoints(), -_sum_y / _r->getNumPoints());
+                                _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                 _item->setZValue(20 + _s.priority - _z_offset);
+								_item->setToolTip(_tooltip);
                             }
                             break;
                         case wkbMultiPolygon:
+                            _sum_x = 0; _sum_y = 0; _sum_count = 0;
+							_mpoly.clear();
+							_mpoly.resize(((OGRMultiPolygon *)_geom)->getNumGeometries());
                             for (int _idx = 0; _idx < ((OGRMultiPolygon *)_geom)->getNumGeometries(); _idx++)
                             {
+								_poly.clear();
                                 _r = ((OGRPolygon *)((OGRMultiPolygon *)_geom)->getGeometryRef(_idx))->getExteriorRing();
-                                _sum_x = 0; _sum_y = 0;
                                 for (int _sub_idx = 0; _sub_idx < _r->getNumPoints(); _sub_idx++)
                                 {
                                     _r->getPoint(_sub_idx, & _p1);
-                                    _poly.append(QPointF(_p1.getX(), -_p1.getY()));
+                                    _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
                                     _sum_x += _p1.getX();
-                                    _sum_y += _p1.getY();
+                                    _sum_y += _p1.getY()*mercator_sretch;
+									_sum_count++;
                                 }
-                                _poly.append(_poly[0]);
-                                _item = new QGraphicsPolygonItem(_poly);
+								_mpoly[_idx] = _poly;
+							}
+							int _contigous = 0;
+							const int _mpcount = _mpoly.count();
+							for (int _idx = 0; _idx < _mpcount; _idx++)
+							{
+								if (_idx == _mpcount - 1 || _mpoly[_idx].back() != _mpoly[_idx + 1].front())
+								{
+									_poly.clear();
+									for (int _mpi = _contigous; _mpi <= _idx; _mpi++)
+									{
+										_poly << _mpoly[_mpi];
+									}
+									_poly << _poly.front();
+									_item = new QGraphicsPolygonItem(_poly);
+									addToGroup(_scamin, _item, _items);
+									((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
+//									((QGraphicsPolygonItem *)_item)->setPen(QColor(Qt::red));								
+									((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
+									_item->setZValue(_s.priority - _z_offset);
+									_item->setToolTip(_tooltip);
+
+									_contigous = _idx + 1;
+								}
+							}
+
+                            if (!_s.symbol->isEmpty())
+                            {
+                                _item = new QFixedPixmapItem();
                                 addToGroup(_scamin, _item, _items);
-                                ((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
-                                ((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
-                                _item->setZValue(_s.priority - _z_offset);
-                                if (!_s.symbol->isEmpty())
-                                {
-                                    _item = new QFixedPixmapItem();
-                                    addToGroup(_scamin, _item, _items);
-                                    _item->setPos(_sum_x / _r->getNumPoints(), -_sum_y / _r->getNumPoints());
-                                    _pixmap = check_complex_symbol(* _s.symbol);
-                                    ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
-                                    ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                    _item->setZValue(20 + _s.priority - _z_offset);
-                                }
-                                _s = apply_rule(_feat, _layer_name, _idx);
+                                _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
+                                _pixmap = check_complex_symbol(* _s.symbol);
+                                ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
+                                ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
+                                _item->setZValue(20 + _s.priority - _z_offset);
+								_item->setToolTip(_tooltip);
                             }
+                            _s = apply_rule(_feat, _layer_name/*, _idx*/);                           
                             break;
                         }
                     }
                 }
-                OGRFeature::DestroyFeature(_feat);
+				if (_feat != 0)
+				{
+	                OGRFeature::DestroyFeature(_feat);
+				}
             }
         }
         items << _items;
@@ -725,17 +806,17 @@ struct S57_BuildScene::Data
         {
             return;
         }
-        const int _i_scale = _scale;
+        const qint64 _i_scale = _scale;
         if (!_exact)
         {
-            for (QMap<int, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
+            for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
             {
                 _i.value()->setVisible(_i_scale <= _i.key());
             }
         }
         else
         {
-            for (QMap<int, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
+            for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
             {
                 _i.value()->setVisible(_i_scale == _i.key());
             }
@@ -758,11 +839,17 @@ S57_BuildScene::~S57_BuildScene()
     delete d;
 }
 
+void S57_BuildScene::setAspect(double ext_aspect)
+{
+	mercator_sretch = ext_aspect;
+}
+
 void S57_BuildScene::clear()
 {
     if (d->scene)
     {
-        d->scene->clear();
+//        d->scene->clear();
+		foreach (QGraphicsItem * _item, d->scene->items()) d->scene->removeItem(_item);
     }
     d->groups.clear();
     d->items.clear();
@@ -778,8 +865,16 @@ void S57_BuildScene::build(const QString & _file_name)
     QString _saved_current = QDir::currentPath();
     QDir::setCurrent(qApp->applicationDirPath() + "/s57/classes");
     OGRDataSource * _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
-    d->build(_ds);
-    delete _ds;
+    if (_ds)
+    {
+        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
+        d->build_s57(_ds);
+        delete _ds;
+    }
+    else
+    {
+        qDebug() << _file_name << "NOT opened";
+    }
     QDir::setCurrent(_saved_current);
 }
 
@@ -791,8 +886,44 @@ void S57_BuildScene::render()
     }
     foreach (QGraphicsItem * _item, d->items)
     {
-        d->scene->addItem(_item);
-    }
+		if (_item->scene() == 0)
+		{
+	        d->scene->addItem(_item);
+		}
+	}
+	fullView();
+}
+
+void S57_BuildScene::resetScale()
+{
+	if (!d->scene)
+	{
+		return;
+	}
+	foreach (QGraphicsView * view, d->scene->views())
+	{
+		view->resetMatrix();
+		view->resetTransform();
+	}
+}
+
+void S57_BuildScene::fullView()
+{
+	if (!d->scene)
+	{
+		return;
+	}
+	foreach (QGraphicsView * view, d->scene->views())
+	{
+		view->resetMatrix();
+		view->resetTransform();
+	}
+	d->scene->setSceneRect(QRectF());
+	foreach (QGraphicsView * view, d->scene->views())
+	{
+		const double _init_scale = qMin<double>(view->viewport()->width() / d->scene->sceneRect().width(), view->viewport()->height() / d->scene->sceneRect().height());
+		view->scale(_init_scale, _init_scale);
+	}
 }
 
 void S57_BuildScene::updateVisibility(double _scale, bool _exact)
@@ -810,7 +941,7 @@ int S57_BuildScene::itemsCount() const
     int _count = 0;
     foreach (QGraphicsItem * _item, d->items)
     {
-        _count += _item->childItems().count();
+        _count += _item->children().count();
     }
     return (_count);
 }

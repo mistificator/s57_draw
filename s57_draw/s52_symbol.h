@@ -1,12 +1,18 @@
 #ifndef S52_SYMBOL_H
 #define S52_SYMBOL_H
 
+#ifdef LIB_S57_DLL
+    #define LIB_S57_EXPORT __declspec(dllexport)
+#else
+    #define LIB_S57_EXPORT
+#endif
+
 #include <QImage>
 #include <QPixmap>
 #include <QStringList>
 #include <QMap>
 
-class S52_Symbol
+class LIB_S57_EXPORT S52_Symbol
 {
 public:
     S52_Symbol();

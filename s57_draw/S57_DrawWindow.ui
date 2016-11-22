@@ -76,6 +76,8 @@
      <property name="title">
       <string>Scale</string>
      </property>
+     <addaction name="actionFullview"/>
+     <addaction name="separator"/>
      <addaction name="action1_5000000"/>
      <addaction name="action1_2000000"/>
      <addaction name="action1_1000000"/>
@@ -101,6 +103,7 @@
     <addaction name="actionColorScheme"/>
     <addaction name="actionLandAndSea"/>
     <addaction name="actionMouse_dragging"/>
+    <addaction name="actionTooltips"/>
     <addaction name="menuAspect_X_Y"/>
    </widget>
    <widget class="QMenu" name="menuTools">
@@ -160,9 +163,6 @@
   <action name="action1_5000000">
    <property name="text">
     <string>1:5000000</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+0</string>
    </property>
   </action>
   <action name="action1_2000000">
@@ -281,6 +281,22 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+2</string>
+   </property>
+  </action>
+  <action name="actionFullview">
+   <property name="text">
+    <string>Fullview</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+0</string>
+   </property>
+  </action>
+  <action name="actionTooltips">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Tooltips</string>
    </property>
   </action>
  </widget>

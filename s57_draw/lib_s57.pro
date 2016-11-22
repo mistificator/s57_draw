@@ -1,4 +1,5 @@
 QT       += core gui
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET =    lib_s57
 TEMPLATE = lib
@@ -12,14 +13,19 @@ SOURCES +=\
         s52_utils.cpp \
         s57_buildscene.cpp
 
+
 HEADERS  +=\
         s52_symbol.h \
         s52_utils.h \
         s57_buildscene.h \
         s52_conditional.h \
-        lib_s57.h
+        lib_s57.h \
+        lib_prti99.h
 
+DEFINES += \
+        LIB_S57_DLL
 
-DEFINES += LIB_S57_DLL
+LIBS +=\
+        ../s57_bin/lib_prti99.lib
 
 include (ogr.pri)

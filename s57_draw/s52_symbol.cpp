@@ -5,7 +5,7 @@
 #include <QString>
 #include <QDebug>
 #include <QPainter>
-#include <qmath.h>
+#include <cmath>
 
 #define M 4
 #define N 4
@@ -69,9 +69,9 @@ struct Rule
 {
     int             RCID;
     struct          {QByteArray       NM;       } name;
-    union           {char             dummy,      PADF,       SYDF;       } definition;
-    union           {char             dummy1,     PATP,       dummy2;     } fillType;
-    union           {char             dummy1,     PASP,       dummy2;     } spacing;
+    union           {char             dummy1,     PADF,       SYDF;       } definition;
+    union           {char             dummy2,     PATP,       dummy3;     } fillType;
+    union           {char             dummy4,     PASP,       dummy5;     } spacing;
     union           {Position         line,       patt,       symb;       } pos;
     struct          {QByteArray       XPO;      } exposition;
     struct          {QByteArray       BTM;      } bitmap;
@@ -127,9 +127,9 @@ struct S52_Symbol::Data
         _dG = qMin<double>(_dG, 100) / 100;
         _dB = qMin<double>(_dB, 100) / 100;
         //       And scale
-        _dR = qPow ( _dR, 1.0 / c_gamma );
-        _dG = qPow ( _dG, 1.0 / c_gamma );
-        _dB = qPow ( _dB, 1.0 / c_gamma );
+		_dR = ::pow ( _dR, 1.0 / c_gamma );
+        _dG = ::pow ( _dG, 1.0 / c_gamma );
+        _dB = ::pow ( _dB, 1.0 / c_gamma );
 
         return (qRgb(_dR * 255, _dG * 255, _dB * 255));
     }
@@ -274,7 +274,7 @@ struct S52_Symbol::Data
             if (_poly.count() > 1)
             {
                 const double _r = _poly[1].x();
-                _p.drawEllipse(_poly[0], _r, _r);
+                _p.drawEllipse(_poly[0].x(), _poly[0].y(), _r, _r);
             }
             _ci = false;
             _pm = false;

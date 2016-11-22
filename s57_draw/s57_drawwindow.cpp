@@ -8,7 +8,8 @@
 #include <QSettings>
 #include <QDebug>
 #include <QMessageBox>
-#include <qmath.h>
+#include <cmath>
+#include "cpl_port.h"
 
 #include "s52_symbol.h"
 
@@ -44,6 +45,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionLandAndSea->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("land_and_sea", false).toBool());
     ui->actionMouse_dragging->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("drag", true).toBool());
     on_actionMouse_dragging_triggered(ui->actionMouse_dragging->isChecked());
+	ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
 
     _ag = new QActionGroup(this);
     ui->action_aspect_1_1->setActionGroup(_ag);
@@ -89,9 +91,9 @@ void S57_DrawWindow::on_actionOpen_triggered()
 {
     QString _fn = QFileDialog::getOpenFileName(
                 this,
-                "Open S57 chart",
+                QObject::tr("Open S57 chart"),
                 QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "*.000"
+				"S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
                 );
     if (_fn.isEmpty())
     {
@@ -102,10 +104,7 @@ void S57_DrawWindow::on_actionOpen_triggered()
     recreateScene();
     builder.build(_fn);
     builder.render();
-    scene->setSceneRect(QRectF());
-    double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
-    precisionAspect();
-    ui->S57View->scale(_init_scale, aspect * _init_scale);
+    ui->S57View->scale(1, aspect);
     updateVisibility();
     circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
     circle[0]->setVisible(false);
@@ -123,9 +122,9 @@ void S57_DrawWindow::on_actionAdd_triggered()
 {
     QString _fn = QFileDialog::getOpenFileName(
                 this,
-                "Add S57 chart",
+                QObject::tr("Add S57 chart"),
                 QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "*.000"
+                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
                 );
     if (_fn.isEmpty())
     {
@@ -133,9 +132,21 @@ void S57_DrawWindow::on_actionAdd_triggered()
     }
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
     ui->S57View->setUpdatesEnabled(false);
+	for (int i = 0; i < 3; i++)
+	{
+		scene->removeItem(circle[i]);
+	}
+	builder.resetScale();
     builder.build(_fn);
     builder.render();
+    ui->S57View->scale(1, aspect);
     updateVisibility();
+    circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
+    circle[0]->setVisible(false);
+    circle[1] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 80));
+    circle[1]->setVisible(false);
+    circle[2] = scene->addEllipse(QRectF(), Qt::NoPen, Qt::red);
+    circle[2]->setVisible(false);
     ui->S57View->setUpdatesEnabled(true);
 }
 
@@ -145,7 +156,7 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
     {
         return;
     }
-    QStringList _files = QDir(_dir).entryList(QStringList() << "*.000");
+    QStringList _files = QDir(_dir).entryList(QStringList() << "*.000" << "*.000.txt" << "*.000.prti99");
     foreach (const QString & _fn, _files)
     {
         if (!_scan)
@@ -159,6 +170,10 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
             qApp->processEvents();
         }
         count++;
+		if (progress && progress->wasCanceled())
+		{
+			return;
+		}
     }
     QStringList _dirs = QDir(_dir).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     if (_dirs.isEmpty())
@@ -173,7 +188,7 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
 
 void S57_DrawWindow::on_actionOpen_folder_triggered()
 {
-    QString _dir = QFileDialog::getExistingDirectory(this, "Open folder with S57 charts", QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
+    QString _dir = QFileDialog::getExistingDirectory(this, QObject::tr("Open folder with S57 charts"), QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
     if (_dir.isEmpty())
     {
         return;
@@ -184,26 +199,23 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
     nextDir(_dir, true);
     ui->S57View->setUpdatesEnabled(false);
     recreateScene();
-    progress = new QProgressDialog(_dir, "Stop", 0, count, this);
-    progress->setWindowTitle("Scanning folder");
+    progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
+    progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
     count = 0;
     nextDir(_dir);
     builder.render();
-    scene->setSceneRect(QRectF());
-    double _init_scale = qMin<double>(ui->S57View->viewport()->width() / scene->sceneRect().width(), ui->S57View->viewport()->height() / scene->sceneRect().height());
-    precisionAspect();
-    ui->S57View->scale(_init_scale, aspect * _init_scale);
+    ui->S57View->scale(1, aspect);
     updateVisibility();
+    progress->close();
+    progress->deleteLater();
+    progress = 0; count = 0;
     circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
     circle[0]->setVisible(false);
     circle[1] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 80));
     circle[1]->setVisible(false);
     circle[2] = scene->addEllipse(QRectF(), Qt::NoPen, Qt::red);
     circle[2]->setVisible(false);
-    progress->close();
-    progress->deleteLater();
-    progress = 0; count = 0;
     ui->S57View->setUpdatesEnabled(true);
     ui->actionAdd->setEnabled(true);
     ui->actionAdd_folder->setEnabled(true);
@@ -212,7 +224,7 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
 
 void S57_DrawWindow::on_actionAdd_folder_triggered()
 {
-    QString _dir = QFileDialog::getExistingDirectory(this, "Open folder with S57 charts", QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
+    QString _dir = QFileDialog::getExistingDirectory(this, QObject::tr("Open folder with S57 charts"), QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
     if (_dir.isEmpty())
     {
         return;
@@ -222,32 +234,45 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
     nextDir(_dir, true);
     ui->S57View->setUpdatesEnabled(false);
-    progress = new QProgressDialog(_dir, "Stop", 0, count, this);
-    progress->setWindowTitle("Scanning folder");
+    progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
+    progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
     count = 0;
+	for (int i = 0; i < 3; i++)
+	{
+		scene->removeItem(circle[i]);
+	}
+	builder.resetScale();
     nextDir(_dir);
     builder.render();
+    ui->S57View->scale(1, aspect);
     updateVisibility();
     progress->close();
     progress->deleteLater();
     progress = 0; count = 0;
+    circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
+    circle[0]->setVisible(false);
+    circle[1] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 80));
+    circle[1]->setVisible(false);
+    circle[2] = scene->addEllipse(QRectF(), Qt::NoPen, Qt::red);
+    circle[2]->setVisible(false);
     ui->S57View->setUpdatesEnabled(true);
-}
+}	
+
 
 void S57_DrawWindow::keyPressEvent(QKeyEvent * _ke)
 {
     ui->S57View->setUpdatesEnabled(false);
     if (_ke->key() == Qt::Key_Plus)
     {
-        ui->S57View->scale(2, 2);
-        qDebug() << currentScale();
+        ui->S57View->scale(1.25, 1.25);
+//        qDebug() << currentScale();
         updateVisibility();
     }
     if (_ke->key() == Qt::Key_Minus)
     {
-        ui->S57View->scale(0.5, 0.5);
-        qDebug() << currentScale();
+        ui->S57View->scale(0.8, 0.8);
+//        qDebug() << currentScale();
         updateVisibility();
     }
     ui->S57View->setUpdatesEnabled(true);
@@ -286,15 +311,15 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
             QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
             const QPointF _pt = _me->scenePos();
             QString _info = "(" +
-                    QString::number(_pt.x()) + ", " +
-                    QString::number(_pt.y()) + "); ";
+                    QString::number(_pt.x()) + (_pt.x() > 0 ? "E" : "W") + QString(", ") +
+                    QString::number(-_pt.y()) + (_pt.y() > 0 ? "S" : "N") + QString(") ");
             position_label->setText(_info);
             if (circle[0] && circle[0]->isVisible())
             {
                 const QPointF _center = circle[0]->rect().center();
-                const double _new_radius = qSqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
+				const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
                 circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
-                circle[0]->setStartAngle(((qAtan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
+				circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
                 circle[0]->setSpanAngle(355 * 16);
 
                 circle[1]->setRect(circle[0]->rect());
@@ -310,25 +335,31 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
         {
             QGraphicsSceneWheelEvent * _we = (QGraphicsSceneWheelEvent *)_ev;
             ui->S57View->setUpdatesEnabled(false);
-            double _k;
+            double _k = 0;
             const int _d = _we->delta();
             if (_d < 0)
             {
-                _k = - 100.0 / _d;
+                _k = 0.8;
             }
             if (_d > 0)
             {
-                _k = _d / 100.0;
+                _k = 1.25;
             }
             if (_d != 0)
             {
                 ui->S57View->scale(_k, _k);
-                qDebug() << currentScale();
+//                qDebug() << currentScale();
                 updateVisibility();
             }
             ui->S57View->setUpdatesEnabled(true);
             return (true);
         }
+		case QEvent::GraphicsSceneHelp:
+			if (ui->actionTooltips->isChecked())
+			{
+				break;
+			}
+			return true;
         }
     }
     return (QMainWindow::eventFilter(_obj, _ev));
@@ -437,14 +468,14 @@ void S57_DrawWindow::on_actionLandAndSea_triggered()
 
 void S57_DrawWindow::on_actionExport_visible_area_triggered()
 {
-    QString _file_name = QFileDialog::getSaveFileName(this, "Save visible area", qApp->applicationDirPath(), "*.png");
+    QString _file_name = QFileDialog::getSaveFileName(this, QObject::tr("Save visible area"), qApp->applicationDirPath(), "*.png");
     if (_file_name.isEmpty())
     {
         return;
     }
     if (!scene)
     {
-        QMessageBox::information(this, "Nothing to export", "Chart is empty");
+        QMessageBox::information(this, QObject::tr("Nothing to export"), QObject::tr("Chart is empty"));
         return;
     }
     QImage _img(8192, 8192, QImage::Format_ARGB32);
@@ -456,14 +487,14 @@ void S57_DrawWindow::on_actionExport_visible_area_triggered()
 
 void S57_DrawWindow::on_actionExport_whole_chart_triggered()
 {
-    QString _file_name = QFileDialog::getSaveFileName(this, "Save whole chart", qApp->applicationDirPath(), "*.png");
+    QString _file_name = QFileDialog::getSaveFileName(this, QObject::tr("Save whole chart"), qApp->applicationDirPath(), "*.png");
     if (_file_name.isEmpty())
     {
         return;
     }
     if (!scene)
     {
-        QMessageBox::information(this, "Nothing to export", "Chart is empty");
+        QMessageBox::information(this, QObject::tr("Nothing to export"), QObject::tr("Chart is empty"));
         return;
     }
     QImage _img(8192, 8192, QImage::Format_ARGB32);
@@ -504,8 +535,8 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
             _total++;
         }
     }
-    progress = new QProgressDialog("", "Stop", 0, _total, this);
-    progress->setWindowTitle("Rendering symbols");
+    progress = new QProgressDialog("", QObject::tr("Stop"), 0, _total, this);
+    progress->setWindowTitle(QObject::tr("Rendering symbols"));
     progress->setWindowModality(Qt::WindowModal);
 
     foreach (const QString & _scheme, builder.s52().colorSchemes())
@@ -540,7 +571,10 @@ void S57_DrawWindow::on_action_aspect_1_1_triggered()
 {
     if (aspect == Aspect12)
     {
-        ui->S57View->scale(1.0, 0.5);
+		ui->S57View->setUpdatesEnabled(false);
+		ui->S57View->scale(1.0, 0.5);
+		updateVisibility();
+		ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect11);
     }
 }
@@ -549,13 +583,27 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
 {
     if (aspect == Aspect11)
     {
+		ui->S57View->setUpdatesEnabled(false);
         ui->S57View->scale(1.0, 2.0);
+		updateVisibility();
+		ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect12);
     }
 }
 
-void  S57_DrawWindow::precisionAspect()
+double S57_DrawWindow::precisionAspect()
 {
     QPointF worldcenter = scene->sceneRect().center();
-    aspect = qAbs<double>(1.0 / cos(worldcenter.y()/180.0*M_PI));
+	return qAbs<double>(1.0 / cos(worldcenter.y()/180.0*M_PI));
+}
+
+void S57_DrawWindow::on_actionFullview_triggered()
+{
+	builder.fullView();
+	updateVisibility();
+}
+
+void S57_DrawWindow::on_actionTooltips_triggered(bool t)
+{
+	QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }

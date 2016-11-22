@@ -14,6 +14,7 @@ HEADERS  +=\
             lib_s57.h
 
 LIBS +=\
-            ../s57_bin/lib_s57.lib
+            ../s57_bin/lib_s57.lib \
+            ../s57_bin/lib_prti99.lib
 
 include (ogr.pri)

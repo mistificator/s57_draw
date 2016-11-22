@@ -1,10 +1,5 @@
-#-------------------------------------------------
-#
-# Project created by QtCreator 2012-02-23T18:01:13
-#
-#-------------------------------------------------
-
-QT       += core gui opengl
+QT       += core gui
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET =    s57_draw
 TEMPLATE =  app
@@ -22,9 +17,8 @@ FORMS    += \
     S57_DrawWindow.ui
 
 LIBS +=\
-            ../s57_bin/lib_s57.lib
-
-include (ogr.pri)
+            ../s57_bin/lib_s57.lib \
+            ../s57_bin/lib_prti99.lib
 
 OTHER_FILES += \
             dic.txt \
@@ -35,3 +29,5 @@ RESOURCES += \
             s57_draw.qrc
 
 TRANSLATIONS += s57_draw.ts
+
+include (ogr.pri)

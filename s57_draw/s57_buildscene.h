@@ -18,10 +18,13 @@ public:
     S57_BuildScene();
     S57_BuildScene(const QString & _lookups_path, const QString & _symbols_path);
     ~S57_BuildScene();
+	void setAspect(double ext_aspect);
 	void clear();
 	void setScene(QGraphicsScene * _scene);
-	void build(const QString & _file_name);
+    void build(const QString & _file_name);
 	void render();
+	void resetScale();
+	void fullView();
 	void updateVisibility(double _scale, bool _exact = false);
     double scale() const;
 	int itemsCount() const;

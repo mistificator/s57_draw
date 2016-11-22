@@ -12,6 +12,6 @@
 #include <QImage>
 #include <QSize>
 
-QImage LIB_S57_EXPORT render_map_region(const QString & _dir, const QRectF & _map_rgn, int _max_dim = 2048, bool _land_and_sea_only = true);
+LIB_S57_EXPORT QImage render_map_region(const QString & _dir, const QRectF & _map_rgn, int _max_dim = 2048, bool _land_and_sea_only = true);
 
 #endif // LIB_S57_MAIN_H

@@ -25,7 +25,10 @@ HEADERS  +=\
 DEFINES += \
         LIB_S57_DLL
 
-LIBS +=\
+win32:LIBS +=\
         ../s57_bin/lib_prti99.lib
+
+unix:LIBS +=\
+        ../s57_bin/lib_prti99.a
 
 include (ogr.pri)

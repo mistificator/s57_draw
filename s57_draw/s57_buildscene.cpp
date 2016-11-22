@@ -241,10 +241,11 @@ struct S57_BuildScene::Data
                         _s->pen->setStyle(Qt::DashLine);
                     }
                     else
-                        if (_tok[1].toUpper() == "DOTT")
-                        {
-                            _s->pen->setStyle(Qt::DotLine);
-                        }
+                    if (_tok[1].toUpper() == "DOTT")
+                    {
+                        _s->pen->setStyle(Qt::DotLine);
+                    }
+                    _s->pen->setWidth(0);
                 }
             }
             else
@@ -256,48 +257,49 @@ struct S57_BuildScene::Data
                     }
                 }
                 else
-                    if (_tok[0].toUpper() == "CS")
+                if (_tok[0].toUpper() == "CS")
+                {
+                    if (_tok.count() > 1)
                     {
-                        if (_tok.count() > 1)
+                        *_s->condition = QString(_tok[1]).toUpper();
+                    }
+                }
+                else
+                if (_tok[0].toUpper() == "SY")
+                {
+                    if (_tok.count() > 1)
+                    {
+                        const QString & _symbol = QString(_tok[1]).toUpper();
+                        if (!_s->symbol->contains(_symbol))
                         {
-                            *_s->condition = QString(_tok[1]).toUpper();
+                            if (!_s->symbol->isEmpty())
+                            {
+                                _s->symbol->append(" ");
+                            }
+                            _s->symbol->append(_symbol);
                         }
                     }
-                    else
-                        if (_tok[0].toUpper() == "SY")
+                }
+                else
+                if (_tok[0].toUpper() == "AP")
+                {
+                    if (_tok.count() > 1)
+                    {
+                        _s->brush->setTextureImage(s52.image(_tok[1]));
+                    }
+                }
+                else
+                if (_tok[0].toUpper() == "LC")
+                {
+                    if (_tok.count() > 1)
+                    {
+                        if (* _s->name != "CBLSUB")
                         {
-                            if (_tok.count() > 1)
-                            {
-                                const QString & _symbol = QString(_tok[1]).toUpper();
-                                if (!_s->symbol->contains(_symbol))
-                                {
-                                    if (!_s->symbol->isEmpty())
-                                    {
-                                        _s->symbol->append(" ");
-                                    }
-                                    _s->symbol->append(_symbol);
-                                }
-                            }
+                            *_s->pen = QColor(s52.symbol_color(_tok[1]));
+                            _s->pen->setWidth(0);
                         }
-                        else
-                            if (_tok[0].toUpper() == "AP")
-                            {
-                                if (_tok.count() > 1)
-                                {
-                                    _s->brush->setTextureImage(s52.image(_tok[1]));
-                                }
-                            }
-                            else
-                                if (_tok[0].toUpper() == "LC")
-                                {
-                                    if (_tok.count() > 1)
-                                    {
-                                        if (* _s->name != "CBLSUB")
-                                        {
-                                            *_s->pen = QColor(s52.symbol_color(_tok[1]));
-                                        }
-                                    }
-                                }
+                    }
+                }
         }
     }
 
@@ -864,10 +866,18 @@ void S57_BuildScene::build(const QString & _file_name)
 {
     QString _saved_current = QDir::currentPath();
     QDir::setCurrent(qApp->applicationDirPath() + "/s57/classes");
-    OGRDataSource * _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
+
+    OGRDataSource * _ds = 0;
+    if (GDALDataset * _gds = (GDALDataset *)GDALOpenEx(_file_name.toLocal8Bit(), GDAL_OF_VECTOR | GDAL_OF_READONLY, 0, 0, 0))
+    {
+        _ds = dynamic_cast<OGRDataSource * >(_gds);
+    }
+
+//    OGRDataSource * _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
     if (_ds)
     {
-        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
+//        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
+        qDebug() << _file_name << "opened with" << _ds->GetDriverName();
         d->build_s57(_ds);
         delete _ds;
     }

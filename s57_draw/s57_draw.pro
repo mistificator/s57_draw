@@ -16,9 +16,13 @@ HEADERS  += \
 FORMS    += \
     S57_DrawWindow.ui
 
-LIBS +=\
+win32:LIBS +=\
             ../s57_bin/lib_s57.lib \
             ../s57_bin/lib_prti99.lib
+
+unix:LIBS +=\
+            ../s57_bin/lib_s57.a \
+            ../s57_bin/lib_prti99.a
 
 OTHER_FILES += \
             dic.txt \

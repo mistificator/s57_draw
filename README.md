@@ -11,3 +11,4 @@ S57 library and demo project.
 ### External links ###
 
 * [GDAL](http://www.gdal.org/)
+* [OpenCPN](http://opencpn.org/)

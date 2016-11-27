@@ -45,7 +45,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionLandAndSea->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("land_and_sea", false).toBool());
     ui->actionMouse_dragging->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("drag", true).toBool());
     on_actionMouse_dragging_triggered(ui->actionMouse_dragging->isChecked());
-	ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
+    ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
 
     _ag = new QActionGroup(this);
     ui->action_aspect_1_1->setActionGroup(_ag);
@@ -65,6 +65,19 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     circle[0] = 0;
     circle[1] = 0;
     circle[2] = 0;
+   // ui->S57View->setStyleSheet("QScrollBar:horizontal { margin: 0px 0px 0px 0px; height: 25px; min-height: 25px;  }");
+QString css;
+
+QFile f(":scrollbar.css");
+   if (!f.exists()) {
+       qDebug() << "No file";
+   } else {
+       f.open(QIODevice::ReadOnly);
+      css= f.readAll();
+   }
+
+    ui->S57View->setStyleSheet(css);
+
 }
 
 S57_DrawWindow::~S57_DrawWindow()
@@ -93,7 +106,7 @@ void S57_DrawWindow::on_actionOpen_triggered()
                 this,
                 QObject::tr("Open S57 chart"),
                 QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-				"S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
+                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
                 );
     if (_fn.isEmpty())
     {
@@ -132,11 +145,11 @@ void S57_DrawWindow::on_actionAdd_triggered()
     }
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
     ui->S57View->setUpdatesEnabled(false);
-	for (int i = 0; i < 3; i++)
-	{
-		scene->removeItem(circle[i]);
-	}
-	builder.resetScale();
+    for (int i = 0; i < 3; i++)
+    {
+        scene->removeItem(circle[i]);
+    }
+    builder.resetScale();
     builder.build(_fn);
     builder.render();
     ui->S57View->scale(1, aspect);
@@ -170,10 +183,10 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
             qApp->processEvents();
         }
         count++;
-		if (progress && progress->wasCanceled())
-		{
-			return;
-		}
+        if (progress && progress->wasCanceled())
+        {
+            return;
+        }
     }
     QStringList _dirs = QDir(_dir).entryList(QDir::Dirs | QDir::NoDotAndDotDot);
     if (_dirs.isEmpty())
@@ -238,11 +251,11 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
     count = 0;
-	for (int i = 0; i < 3; i++)
-	{
-		scene->removeItem(circle[i]);
-	}
-	builder.resetScale();
+    for (int i = 0; i < 3; i++)
+    {
+        scene->removeItem(circle[i]);
+    }
+    builder.resetScale();
     nextDir(_dir);
     builder.render();
     ui->S57View->scale(1, aspect);
@@ -266,13 +279,13 @@ void S57_DrawWindow::keyPressEvent(QKeyEvent * _ke)
     if (_ke->key() == Qt::Key_Plus)
     {
         ui->S57View->scale(1.25, 1.25);
-//        qDebug() << currentScale();
+        //        qDebug() << currentScale();
         updateVisibility();
     }
     if (_ke->key() == Qt::Key_Minus)
     {
         ui->S57View->scale(0.8, 0.8);
-//        qDebug() << currentScale();
+        //        qDebug() << currentScale();
         updateVisibility();
     }
     ui->S57View->setUpdatesEnabled(true);
@@ -317,9 +330,9 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
             if (circle[0] && circle[0]->isVisible())
             {
                 const QPointF _center = circle[0]->rect().center();
-				const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
+                const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
                 circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
-				circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
+                circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
                 circle[0]->setSpanAngle(355 * 16);
 
                 circle[1]->setRect(circle[0]->rect());
@@ -348,18 +361,18 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
             if (_d != 0)
             {
                 ui->S57View->scale(_k, _k);
-//                qDebug() << currentScale();
+                //                qDebug() << currentScale();
                 updateVisibility();
             }
             ui->S57View->setUpdatesEnabled(true);
             return (true);
         }
-		case QEvent::GraphicsSceneHelp:
-			if (ui->actionTooltips->isChecked())
-			{
-				break;
-			}
-			return true;
+        case QEvent::GraphicsSceneHelp:
+            if (ui->actionTooltips->isChecked())
+            {
+                break;
+            }
+            return true;
         }
     }
     return (QMainWindow::eventFilter(_obj, _ev));
@@ -571,10 +584,10 @@ void S57_DrawWindow::on_action_aspect_1_1_triggered()
 {
     if (aspect == Aspect12)
     {
-		ui->S57View->setUpdatesEnabled(false);
-		ui->S57View->scale(1.0, 0.5);
-		updateVisibility();
-		ui->S57View->setUpdatesEnabled(true);
+        ui->S57View->setUpdatesEnabled(false);
+        ui->S57View->scale(1.0, 0.5);
+        updateVisibility();
+        ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect11);
     }
 }
@@ -583,10 +596,10 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
 {
     if (aspect == Aspect11)
     {
-		ui->S57View->setUpdatesEnabled(false);
+        ui->S57View->setUpdatesEnabled(false);
         ui->S57View->scale(1.0, 2.0);
-		updateVisibility();
-		ui->S57View->setUpdatesEnabled(true);
+        updateVisibility();
+        ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect = Aspect12);
     }
 }
@@ -594,16 +607,16 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
 double S57_DrawWindow::precisionAspect()
 {
     QPointF worldcenter = scene->sceneRect().center();
-	return qAbs<double>(1.0 / cos(worldcenter.y()/180.0*M_PI));
+    return qAbs<double>(1.0 / cos(worldcenter.y()/180.0*M_PI));
 }
 
 void S57_DrawWindow::on_actionFullview_triggered()
 {
-	builder.fullView();
-	updateVisibility();
+    builder.fullView();
+    updateVisibility();
 }
 
 void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 {
-	QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
+    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }

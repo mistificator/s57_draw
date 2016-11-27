@@ -37,3 +37,6 @@ RESOURCES += \
 TRANSLATIONS += s57_draw.ts
 
 include (ogr.pri)
+
+DISTFILES += \
+    scrollbar.css

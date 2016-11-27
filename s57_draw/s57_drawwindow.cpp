@@ -65,19 +65,17 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     circle[0] = 0;
     circle[1] = 0;
     circle[2] = 0;
-   // ui->S57View->setStyleSheet("QScrollBar:horizontal { margin: 0px 0px 0px 0px; height: 25px; min-height: 25px;  }");
-QString css;
 
-QFile f(":scrollbar.css");
-   if (!f.exists()) {
-       qDebug() << "No file";
-   } else {
-       f.open(QIODevice::ReadOnly);
-      css= f.readAll();
-   }
-
-    ui->S57View->setStyleSheet(css);
-
+    QFile f(":scrollbar.css");
+    if (f.exists() && f.open(QIODevice::ReadOnly))
+    {
+        ui->S57View->setStyleSheet(f.readAll());
+        f.close();        
+    }
+    else
+    {
+        qDebug() << "No css file";
+    } 
 }
 
 S57_DrawWindow::~S57_DrawWindow()

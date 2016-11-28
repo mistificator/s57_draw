@@ -1,8 +1,6 @@
 <RCC>
     <qresource prefix="/global">
         <file>s57_draw.qm</file>
-    </qresource>
-    <qresource prefix="/">
         <file>scrollbar.css</file>
     </qresource>
 </RCC>

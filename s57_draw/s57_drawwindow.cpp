@@ -13,120 +13,6 @@
 
 #include "s52_symbol.h"
 
-class GraphicsSceneWithGrid: public QGraphicsScene
-{
-private:
-    double aspect;
-public:
-    GraphicsSceneWithGrid(QObject *parent = 0) :
-        QGraphicsScene(parent)
-    {
-        aspect = 1.0;
-    }
-    void setAspect(double val)
-    {
-        aspect = val;
-    }
-protected:
-    void drawForeground(QPainter * painter, const QRectF & rect)
-    {
-        if (views().isEmpty())
-        {
-            return;
-        }
-
-        invalidate(QRectF(), ForegroundLayer);
-
-        QGraphicsView * view = views().at(0);
-
-        painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
-        painter->setFont(QFont("Arial", 12));
-
-        const QPointF _scene_top_left = sceneRect().topLeft();
-        const QPointF PtX1_vector((rect.height()*0.015),(rect.height()*0.025));
-        const QPointF PtX2_vector((rect.height()*0.015),-(rect.height()*0.015));
-
-        const QPointF PtY1_vector((rect.height()*0.005),-(rect.height()*0.015));
-        const QPointF PtY2_vector(-(rect.height()*0.12),-(rect.height()*0.015));
-
-        const int grid_count_hint = 5;
-        const float _grid_x_step = ( rect.bottomRight().x()-rect.topLeft().x())/float(grid_count_hint);
-        const float  _grid_y_step = ( rect.bottomRight().y()-rect.topLeft().y())/float(grid_count_hint);
-
-        float dx_origin = qAbs(_scene_top_left.x()-rect.topLeft().x())/_grid_x_step;
-        dx_origin = (1.0 - dx_origin + int(dx_origin))*_grid_x_step+rect.topLeft().x();
-        float dy_origin = qAbs(_scene_top_left.y()-rect.topLeft().y())/_grid_y_step;
-        dy_origin = (1.0 - dy_origin + int(dy_origin))*_grid_y_step+rect.topLeft().y();
-
-        QPointF PX1 = QPointF(dx_origin,rect.topLeft().y());
-        QPointF PtX1 = PX1+PtX1_vector;
-        QPointF PY1 = QPointF(rect.topLeft().x(),dy_origin);
-        QPointF PtY1 = PY1+PtY1_vector;
-
-        QPointF PX2 = QPointF(dx_origin,rect.bottomRight().y());
-        QPointF PtX2 = PX2+PtX2_vector;
-        QPointF PY2 = QPointF(rect.bottomRight().x(),dy_origin);
-        QPointF PtY2 = PY2+PtY2_vector;
-
-        const QPointF delta_X(_grid_x_step,0);
-        const QPointF delta_Y(0,_grid_y_step);
-
-        QString sX,sY;
-        for (int _i = 0; _i < grid_count_hint; _i++)
-        {
-            painter->drawLine(PX1, PX2);
-            painter->drawLine(PY1, PY2);
-
-            PX1+=delta_X;
-            PX2+=delta_X;
-            PY1+=delta_Y;
-            PY2+=delta_Y;
-        }
-        dy_origin /= aspect;
-
-        painter->save();
-        painter->resetTransform();
-
-        for (int _i=0; _i<grid_count_hint;_i++)
-        {
-            if(dx_origin >= 0)
-            {
-                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
-            }
-            else
-            {
-                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
-
-            }
-
-            if(dy_origin >= 0)
-            {
-                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
-            }
-            else
-            {
-                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
-
-            }
-
-            painter->drawText(view->mapFromScene(PtX1),sX);
-            painter->drawText(view->mapFromScene(PtX2),sX);
-            painter->drawText(view->mapFromScene(PtY1),sY);
-            painter->drawText(view->mapFromScene(PtY2),sY);
-
-            dx_origin +=_grid_x_step;
-            dy_origin +=_grid_y_step / aspect;
-
-            PtX1+=delta_X;
-            PtX2+=delta_X;
-            PtY1+=delta_Y;
-            PtY2+=delta_Y;
-
-        }
-        painter->restore();
-    }
-};
-
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11)
@@ -176,10 +62,6 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         on_action_aspect_1_2_triggered();
     }
 
-    circle[0] = 0;
-    circle[1] = 0;
-    circle[2] = 0;
-
     QFile f(":global/scrollbar.css");
     if (f.exists() && f.open(QIODevice::ReadOnly))
     {
@@ -204,33 +86,14 @@ void S57_DrawWindow::recreateScene()
         builder.clear();
         scene->deleteLater();
     }
-    scene = new GraphicsSceneWithGrid();
+    scene = new S57_ExtendedScene();
+    scene->setAspect(aspect);
+    scene->setRadarHintEnabled(true);
     scene->installEventFilter(this);
     ui->S57View->setScene(scene);
     builder.setScene(scene);
     ui->S57View->resetMatrix();
     ui->S57View->resetTransform();
-}
-
-void S57_DrawWindow::addCircles()
-{
-    circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
-    circle[0]->setVisible(false);
-    circle[1] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 80));
-    circle[1]->setVisible(false);
-    circle[2] = scene->addEllipse(QRectF(), Qt::NoPen, Qt::red);
-    circle[2]->setVisible(false);
-}
-
-void S57_DrawWindow::removeCircles()
-{
-    for (int i = 0; i < 3; i++)
-    {
-        if (circle[i])
-        {
-            scene->removeItem(circle[i]);
-        }
-    }
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -247,13 +110,11 @@ void S57_DrawWindow::on_actionOpen_triggered()
     }
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
     ui->S57View->setUpdatesEnabled(false);
-    removeCircles();
     recreateScene();
     builder.build(_fn);
     builder.render();
     ui->S57View->scale(1, aspect);
     updateVisibility();
-    addCircles();
     ui->S57View->setUpdatesEnabled(true);
     ui->actionAdd->setEnabled(true);
     ui->actionAdd_folder->setEnabled(true);
@@ -274,13 +135,11 @@ void S57_DrawWindow::on_actionAdd_triggered()
     }
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
     ui->S57View->setUpdatesEnabled(false);
-    removeCircles();
     builder.resetScale();
     builder.build(_fn);
     builder.render();
     ui->S57View->scale(1, aspect);
     updateVisibility();
-    addCircles();
     ui->S57View->setUpdatesEnabled(true);
 }
 
@@ -332,7 +191,6 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
     nextDir(_dir, true);
     ui->S57View->setUpdatesEnabled(false);
-    removeCircles();
     recreateScene();
     progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
     progress->setWindowTitle(QObject::tr("Scanning folder"));
@@ -345,7 +203,6 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
     progress->close();
     progress->deleteLater();
     progress = 0; count = 0;
-    addCircles();
     ui->S57View->setUpdatesEnabled(true);
     ui->actionAdd->setEnabled(true);
     ui->actionAdd_folder->setEnabled(true);
@@ -364,7 +221,6 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
     nextDir(_dir, true);
     ui->S57View->setUpdatesEnabled(false);
-    removeCircles();
     progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
     progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
@@ -377,7 +233,6 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     progress->close();
     progress->deleteLater();
     progress = 0; count = 0;
-    addCircles();
     ui->S57View->setUpdatesEnabled(true);
 }	
 
@@ -411,23 +266,6 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
     {
         switch (_ev->type())
         {
-        case QEvent::GraphicsSceneMousePress:
-        {
-            QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-            if (_me->button() == Qt::RightButton && circle[0])
-            {
-                circle[0]->setVisible(!circle[0]->isVisible());
-                circle[1]->setVisible(circle[0]->isVisible());
-                circle[2]->setVisible(circle[0]->isVisible());
-                if (circle[0]->isVisible())
-                {
-                    circle[0]->setRect(_me->scenePos().x(), _me->scenePos().y(), 0, 0);
-                    circle[1]->setRect(circle[0]->rect());
-                    circle[2]->setRect(circle[0]->rect());
-                }
-            }
-            break;
-        }
         case QEvent::GraphicsSceneMouseMove:
         {
             QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
@@ -436,21 +274,6 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                     QString::number(_pt.x()) + (_pt.x() > 0 ? "E" : "W") + QString(", ") +
                     QString::number(-_pt.y()) + (_pt.y() > 0 ? "S" : "N") + QString(") ");
             position_label->setText(_info);
-            if (circle[0] && circle[0]->isVisible())
-            {
-                const QPointF _center = circle[0]->rect().center();
-                const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
-                circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
-                circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
-                circle[0]->setSpanAngle(355 * 16);
-
-                circle[1]->setRect(circle[0]->rect());
-                circle[1]->setStartAngle(circle[0]->startAngle() - 7.5 * 16);
-                circle[1]->setSpanAngle(10 * 16);
-
-                const double _scale = builder.scale() / 200000000.0;
-                circle[2]->setRect(_center.x() - _scale, _center.y() - _scale / aspect, _scale * 2, _scale * 2 / aspect);
-            }
             break;
         }
         case QEvent::GraphicsSceneWheel:
@@ -695,11 +518,11 @@ void S57_DrawWindow::on_action_aspect_1_1_triggered()
     {
         aspect = Aspect11;
         ui->S57View->setUpdatesEnabled(false);
+        ui->S57View->scale(1.0, 0.5);
         if (scene)
         {
             scene->setAspect(aspect);
         }
-        ui->S57View->scale(1.0, 0.5);
         updateVisibility();
         ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);
@@ -712,11 +535,11 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
     {
         aspect = Aspect12;
         ui->S57View->setUpdatesEnabled(false);
+        ui->S57View->scale(1.0, 2.0);
         if (scene)
         {
             scene->setAspect(aspect);
         }
-        ui->S57View->scale(1.0, 2.0);
         updateVisibility();
         ui->S57View->setUpdatesEnabled(true);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);

@@ -12,8 +12,6 @@ namespace Ui {
 class S57_DrawWindow;
 }
 
-class GraphicsSceneWithGrid;
-
 class S57_DrawWindow : public QMainWindow
 {
     Q_OBJECT
@@ -50,8 +48,7 @@ private slots:
 	void on_actionTooltips_triggered(bool);
 private:
     Ui::S57_DrawWindow * ui;
-    GraphicsSceneWithGrid * scene;
-    QGraphicsEllipseItem * circle[3];
+    S57_ExtendedScene * scene;
     QLabel * position_label, * scale_label;
     void keyPressEvent(QKeyEvent * _ke);
     bool eventFilter(QObject *, QEvent *);
@@ -67,8 +64,6 @@ private:
     void recreateScene();
     void scaleTo1(double _scale, double _dot_mm = 0.25, double _km_in_deg = 78.715);
     double precisionAspect();
-    void addCircles();
-    void removeCircles();
 };
 
 #endif // S57_DrawWindow_H

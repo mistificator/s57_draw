@@ -1048,7 +1048,9 @@ struct S57_ExtendedScene::Data
                     in_radar = !in_radar;
                     if (in_radar)
                     {
-                        circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)), Qt::NoPen, QColor(0, 255, 0, 40));
+                        //circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)), Qt::NoPen, QColor(0, 255, 0, 40));
+                        circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)),QPen( QColor(50, 15, 0, 250), 0) , Qt::NoBrush);
+
                         circle[1] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, QColor(0, 255, 0, 80));
                         circle[2] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, Qt::red);
                     }
@@ -1071,11 +1073,15 @@ struct S57_ExtendedScene::Data
                     const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
                     circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
                     circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
-                    circle[0]->setSpanAngle(355 * 16);
+                 //   circle[0]->setSpanAngle(355 * 16);
+                    circle[0]->setSpanAngle(359.9375 * 16);
 
                     circle[1]->setRect(circle[0]->rect());
-                    circle[1]->setStartAngle(circle[0]->startAngle() - 7.5 * 16);
-                    circle[1]->setSpanAngle(10 * 16);
+                //    circle[1]->setStartAngle(circle[0]->startAngle() - 7.5 * 16);
+                    circle[1]->setStartAngle(circle[0]->startAngle() - 0.5 * 16);
+
+                    //circle[1]->setSpanAngle(10 * 16);
+                    circle[1]->setSpanAngle(1.0 * 16);
 
                     const double _scale = builder->scaleTo1() / 200000000.0;
                     circle[2]->setRect(_center.x() - _scale, _center.y() - _scale / aspect, _scale * 2, _scale * 2 / aspect);

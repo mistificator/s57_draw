@@ -40,6 +40,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         if (_scheme == _def_scheme)
         {
             _action->setChecked(true);
+            builder.s52().setColorScheme(_action->text());
         }
     }
     ui->actionLandAndSea->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("land_and_sea", false).toBool());
@@ -72,75 +73,21 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     {
         qDebug() << "No css file";
     } 
-}
 
-S57_DrawWindow::~S57_DrawWindow()
-{
-    delete ui;
-}
-
-void S57_DrawWindow::recreateScene()
-{
-    if (scene)
-    {
-        builder.clear();
-        scene->deleteLater();
-    }
     scene = new S57_ExtendedScene();
     scene->setAspect(aspect);
     scene->setRadarHintEnabled(true);
     scene->installEventFilter(this);
     ui->S57View->setScene(scene);
     builder.setScene(scene);
-    ui->S57View->resetMatrix();
-    ui->S57View->resetTransform();
+    builder.fullView();
 }
 
-void S57_DrawWindow::on_actionOpen_triggered()
+S57_DrawWindow::~S57_DrawWindow()
 {
-    QString _fn = QFileDialog::getOpenFileName(
-                this,
-                QObject::tr("Open S57 chart"),
-                QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
-                );
-    if (_fn.isEmpty())
-    {
-        return;
-    }
-    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
-    ui->S57View->setUpdatesEnabled(false);
-    recreateScene();
-    builder.build(_fn);
-    builder.render();
-    ui->S57View->scale(1, aspect);
-    updateVisibility();
-    ui->S57View->setUpdatesEnabled(true);
-    ui->actionAdd->setEnabled(true);
-    ui->actionAdd_folder->setEnabled(true);
-}
-
-
-void S57_DrawWindow::on_actionAdd_triggered()
-{
-    QString _fn = QFileDialog::getOpenFileName(
-                this,
-                QObject::tr("Add S57 chart"),
-                QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
-                );
-    if (_fn.isEmpty())
-    {
-        return;
-    }
-    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(_fn).absolutePath());
-    ui->S57View->setUpdatesEnabled(false);
-    builder.resetScale();
-    builder.build(_fn);
-    builder.render();
-    ui->S57View->scale(1, aspect);
-    updateVisibility();
-    ui->S57View->setUpdatesEnabled(true);
+    builder.clear();
+    scene->deleteLater();
+    delete ui;
 }
 
 void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
@@ -179,24 +126,54 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
     }
 }
 
-void S57_DrawWindow::on_actionOpen_folder_triggered()
+void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 {
-    QString _dir = QFileDialog::getExistingDirectory(this, QObject::tr("Open folder with S57 charts"), QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
-    if (_dir.isEmpty())
+    if (file_or_dir.isEmpty())
     {
         return;
     }
-    QDir _dir_up = QDir(_dir);
-    _dir_up.cd("..");
-    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
-    nextDir(_dir, true);
-    ui->S57View->setUpdatesEnabled(false);
-    recreateScene();
-    progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
+    switch (mode)
+    {
+    case OpenMapDir:
+    case AddMapDir:
+        nextDir(file_or_dir, true);
+        break;
+    }
+    progress = new QProgressDialog(file_or_dir, QObject::tr("Stop"), 0, count, this);
     progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
+    progress->show();
     count = 0;
-    nextDir(_dir);
+    ui->S57View->setUpdatesEnabled(false);
+    switch (mode)
+    {
+    case OpenMapFile:
+    case OpenMapDir:
+        builder.clear();
+        ui->actionAdd->setEnabled(true);
+        ui->actionAdd_folder->setEnabled(true);
+        break;
+    }
+    builder.resetScale();
+    switch (mode)
+    {
+    case OpenMapFile:
+    case AddMapFile:
+        {
+            QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", QFileInfo(file_or_dir).absolutePath());
+            builder.build(file_or_dir);
+        }
+        break;
+    case OpenMapDir:
+    case AddMapDir:
+        {
+            QDir _dir_up = QDir(file_or_dir);
+            _dir_up.cd("..");
+            QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
+            nextDir(file_or_dir);
+        }
+        break;
+    }
     builder.render();
     ui->S57View->scale(1, aspect);
     updateVisibility();
@@ -204,8 +181,39 @@ void S57_DrawWindow::on_actionOpen_folder_triggered()
     progress->deleteLater();
     progress = 0; count = 0;
     ui->S57View->setUpdatesEnabled(true);
-    ui->actionAdd->setEnabled(true);
-    ui->actionAdd_folder->setEnabled(true);
+}
+
+void S57_DrawWindow::on_actionOpen_triggered()
+{
+    QString _fn = QFileDialog::getOpenFileName(
+                this,
+                QObject::tr("Open S57 chart"),
+                QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
+                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
+                );
+    openMaps(OpenMapFile, _fn);
+}
+
+
+void S57_DrawWindow::on_actionAdd_triggered()
+{
+    QString _fn = QFileDialog::getOpenFileName(
+                this,
+                QObject::tr("Add S57 chart"),
+                QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
+                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
+                );
+    openMaps(AddMapFile, _fn);
+}
+
+void S57_DrawWindow::on_actionOpen_folder_triggered()
+{
+    QString _dir = QFileDialog::getExistingDirectory(this, QObject::tr("Open folder with S57 charts"), QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString());
+    if (_dir.isEmpty())
+    {
+        return;
+    }
+    openMaps(OpenMapDir, _dir);
 }
 
 
@@ -216,25 +224,8 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     {
         return;
     }
-    QDir _dir_up = QDir(_dir);
-    _dir_up.cd("..");
-    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("path", _dir_up.absolutePath());
-    nextDir(_dir, true);
-    ui->S57View->setUpdatesEnabled(false);
-    progress = new QProgressDialog(_dir, QObject::tr("Stop"), 0, count, this);
-    progress->setWindowTitle(QObject::tr("Scanning folder"));
-    progress->setWindowModality(Qt::WindowModal);
-    count = 0;
-    builder.resetScale();
-    nextDir(_dir);
-    builder.render();
-    ui->S57View->scale(1, aspect);
-    updateVisibility();
-    progress->close();
-    progress->deleteLater();
-    progress = 0; count = 0;
-    ui->S57View->setUpdatesEnabled(true);
-}	
+    openMaps(AddMapDir, _dir);
+}
 
 
 void S57_DrawWindow::keyPressEvent(QKeyEvent * _ke)
@@ -310,22 +301,9 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
     return (QMainWindow::eventFilter(_obj, _ev));
 }
 
-double S57_DrawWindow::currentScale(double _dot_mm, double _km_in_deg) const
-{
-    if (!scene)
-    {
-        return (1);
-    }
-    const QPointF _top_left = ui->S57View->mapToScene(0, 0);
-    const QPointF _bottom_right = ui->S57View->mapToScene(ui->S57View->viewport()->width(), ui->S57View->viewport()->height());
-    const double _mm = qMax(ui->S57View->viewport()->width(), ui->S57View->viewport()->height()) * _dot_mm;
-    const double _degs = qMax(qAbs(_bottom_right.x() - _top_left.x()), qAbs(_bottom_right.y() - _top_left.y()));
-    return (_km_in_deg * _degs * 1000000.0 / _mm);
-}
-
 void S57_DrawWindow::updateVisibility()
 {
-    const double _scale = currentScale();
+    const double _scale = builder.scaleTo1();
     if (ui->actionLandAndSea->isChecked())
     {
         builder.updateVisibility(0x7fffffff, true);
@@ -335,22 +313,17 @@ void S57_DrawWindow::updateVisibility()
         builder.updateVisibility(_scale);
     }
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
-    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("land_and_sea", ui->actionLandAndSea->isChecked());
 }
 
-void S57_DrawWindow::scaleTo1(double _scale, double _dot_mm, double _km_in_deg)
+void S57_DrawWindow::scaleTo1(double _scale)
 {
     if (!scene)
     {
         return;
     }
-    const QPointF _top_left = ui->S57View->mapToScene(0, 0);
-    const QPointF _bottom_right = ui->S57View->mapToScene(ui->S57View->viewport()->width(), ui->S57View->viewport()->height());
-    const double _mm = qMax(ui->S57View->viewport()->width(), ui->S57View->viewport()->height()) * _dot_mm;
-    const double _degs = qMax(qAbs(_bottom_right.x() - _top_left.x()), qAbs(_bottom_right.y() - _top_left.y()));
-    const double _new_degs = _scale * _mm / (_km_in_deg * 1000000.0);
     ui->S57View->setUpdatesEnabled(false);
-    ui->S57View->scale(_degs / _new_degs, _degs / _new_degs);
+    const double scale = builder.scaleTo1(_scale);
+    ui->S57View->scale(scale, scale);
     updateVisibility();
     ui->S57View->setUpdatesEnabled(true);
 }
@@ -409,6 +382,7 @@ void S57_DrawWindow::on_action1_5000_triggered()
 void S57_DrawWindow::on_actionLandAndSea_triggered()
 {
     updateVisibility();
+    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("land_and_sea", ui->actionLandAndSea->isChecked());
 }
 
 void S57_DrawWindow::on_actionExport_visible_area_triggered()
@@ -456,6 +430,14 @@ void S57_DrawWindow::colorSchemeChanged()
     {
         return;
     }
+    if (scene && !scene->items().isEmpty() && QMessageBox::question(this, tr("Question"), tr("All maps will be closed. Continue?"), tr("Yes"), tr("No")) != 0)
+    {
+        return;
+    }
+    builder.clear();
+    builder.resetScale();
+    ui->actionAdd->setEnabled(false);
+    ui->actionAdd_folder->setEnabled(false);
     builder.s52().setColorScheme(_action->text());
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("scheme", _action->text());
 }

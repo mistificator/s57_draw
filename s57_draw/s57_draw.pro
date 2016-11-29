@@ -29,7 +29,8 @@ unix:QMAKE_LFLAGS += -ldl
 OTHER_FILES += \
             dic.txt \
             s57_draw.ts \
-            s57_draw.qm
+            s57_draw.qm \
+            scrollbar.css
 
 RESOURCES += \
             s57_draw.qrc
@@ -38,5 +39,12 @@ TRANSLATIONS += s57_draw.ts
 
 include (ogr.pri)
 
-DISTFILES += \
-    scrollbar.css
+VERSION_MAJOR = 1
+VERSION_MINOR = 0
+VERSION_BUILD = 0
+
+DEFINES += "VERSION_MAJOR=$$VERSION_MAJOR"\
+       "VERSION_MINOR=$$VERSION_MINOR"\
+       "VERSION_BUILD=$$VERSION_BUILD"
+
+VERSION = $${VERSION_MAJOR}.$${VERSION_MINOR}.$${VERSION_BUILD}

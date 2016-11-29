@@ -59,10 +59,11 @@ private:
     enum {Aspect11 = 1, Aspect12 = 2};
     int aspect;
     void nextDir(const QString & _dir, bool _scan = false);
-    double currentScale(double _dot_mm = 0.25, double _km_in_deg = 78.715) const;
+    enum OpenMode {OpenMapFile = 0, AddMapFile, OpenMapDir, AddMapDir};
+    void openMaps(OpenMode mode, QString file_or_dir);
     void updateVisibility();
     void recreateScene();
-    void scaleTo1(double _scale, double _dot_mm = 0.25, double _km_in_deg = 78.715);
+    void scaleTo1(double _scale);
     double precisionAspect();
 };
 

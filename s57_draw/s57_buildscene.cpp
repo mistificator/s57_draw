@@ -852,8 +852,9 @@ void S57_BuildScene::clear()
 {
     if (d->scene)
     {
-//        d->scene->clear();
 		foreach (QGraphicsItem * _item, d->scene->items()) d->scene->removeItem(_item);
+        d->scene->clear();
+        d->scene->setSceneRect(-1, -1, 2, 2);
     }
     d->groups.clear();
     d->items.clear();
@@ -866,6 +867,10 @@ void S57_BuildScene::setScene(QGraphicsScene * _scene)
     {
         ext_scene->registerBuildScene(this);
     }
+    if (d->scene)
+    {
+        d->scene->setSceneRect(-1, -1, 2, 2);
+    }
 }
 
 void S57_BuildScene::build(const QString & _file_name)
@@ -874,16 +879,19 @@ void S57_BuildScene::build(const QString & _file_name)
     QDir::setCurrent(qApp->applicationDirPath() + "/s57/classes");
 
     OGRDataSource * _ds = 0;
+
+#if (GDAL_VERSION_MAJOR > 1)
     if (GDALDataset * _gds = (GDALDataset *)GDALOpenEx(_file_name.toLocal8Bit(), GDAL_OF_VECTOR | GDAL_OF_READONLY, 0, 0, 0))
     {
         _ds = dynamic_cast<OGRDataSource * >(_gds);
     }
-
-//    OGRDataSource * _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
+#else
+    _ds = OGRSFDriverRegistrar::Open(_file_name.toLocal8Bit());
+#endif
     if (_ds)
     {
 //        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
-        qDebug() << _file_name << "opened with" << _ds->GetDriverName();
+//        qDebug() << _file_name << "opened with" << _ds->GetDriverName();
         d->build_s57(_ds);
         delete _ds;
     }
@@ -934,7 +942,7 @@ void S57_BuildScene::fullView()
 		view->resetMatrix();
 		view->resetTransform();
 	}
-	d->scene->setSceneRect(QRectF());
+    d->scene->setSceneRect(QRectF());
 	foreach (QGraphicsView * view, d->scene->views())
 	{
 		const double _init_scale = qMin<double>(view->viewport()->width() / d->scene->sceneRect().width(), view->viewport()->height() / d->scene->sceneRect().height());
@@ -964,15 +972,30 @@ int S57_BuildScene::itemsCount() const
 
 void S57_BuildScene::setScaleTo(S57_BuildScene * _other)
 {
-    _other->d->updateVisibility(d->scale, false);
     if (_other->d->scene && d->scene)
     {
+        _other->d->updateVisibility(d->scale, false);
     }
 }
 
 S52_Symbol & S57_BuildScene::s52() const
 {
     return d->s52;
+}
+
+double S57_BuildScene::scaleTo1(double _scale, double _dot_mm, double _km_in_deg)
+{
+    if (!d->scene || d->scene->views().isEmpty())
+    {
+        return 1.0;
+    }
+    QGraphicsView * view = d->scene->views().at(0);
+    const QPointF _top_left = view->mapToScene(0, 0);
+    const QPointF _bottom_right = view->mapToScene(view->viewport()->width(), view->viewport()->height());
+    const double _mm = qMax(view->viewport()->width(), view->viewport()->height()) * _dot_mm;
+    const double _degs = qMax(qAbs(_bottom_right.x() - _top_left.x()), qAbs(_bottom_right.y() - _top_left.y()));
+    const double _new_degs = _scale * _mm / (_km_in_deg * 1000000.0);
+    return _degs / _new_degs;
 }
 
 
@@ -984,8 +1007,8 @@ struct S57_ExtendedScene::Data
     S57_ExtendedScene * scene;
     S57_BuildScene * builder;
     double aspect;
-    bool radar_hint;
-    Data(S57_ExtendedScene * _scene): scene(_scene), builder(0), aspect(1.0), radar_hint(false)
+    bool radar_hint, in_radar;
+    Data(S57_ExtendedScene * _scene): scene(_scene), builder(0), aspect(1.0), radar_hint(false), in_radar(false)
     {
         circle[0] = 0;
         circle[1] = 0;
@@ -993,7 +1016,6 @@ struct S57_ExtendedScene::Data
     }
     ~Data()
     {
-        removeCircles();
     }
     QGraphicsView * p2v(QPainter * _painter)
     {
@@ -1010,62 +1032,41 @@ struct S57_ExtendedScene::Data
 
         return dynamic_cast<QGraphicsView *>(viewport_widget->parent());
     }
-    void addCircles()
-    {
-        removeCircles();
-        circle[0] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 40));
-        circle[0]->setVisible(false);
-        circle[1] = scene->addEllipse(QRectF(), Qt::NoPen, QColor(0, 255, 0, 80));
-        circle[1]->setVisible(false);
-        circle[2] = scene->addEllipse(QRectF(), Qt::NoPen, Qt::red);
-        circle[2]->setVisible(false);
-    }
-
-    void removeCircles()
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            if (circle[i])
-            {
-                scene->removeItem(circle[i]);
-            }
-        }
-    }
     void event(QEvent * _ev)
     {
         if (!builder)
         {
             return;
         }
-        if (radar_hint && circle[0] == 0)
-        {
-            addCircles();
-        }
         switch (_ev->type())
         {
             case QEvent::GraphicsSceneMousePress:
             {
                 QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-                if (_me->button() == Qt::RightButton && circle[0])
+                if (_me->button() == Qt::RightButton && radar_hint)
                 {
-                    circle[0]->setVisible(!circle[0]->isVisible());
-                    circle[1]->setVisible(circle[0]->isVisible());
-                    circle[2]->setVisible(circle[0]->isVisible());
-                    if (circle[0]->isVisible())
+                    in_radar = !in_radar;
+                    if (in_radar)
                     {
-                        circle[0]->setRect(_me->scenePos().x(), _me->scenePos().y(), 0, 0);
-                        circle[1]->setRect(circle[0]->rect());
-                        circle[2]->setRect(circle[0]->rect());
+                        circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)), Qt::NoPen, QColor(0, 255, 0, 40));
+                        circle[1] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, QColor(0, 255, 0, 80));
+                        circle[2] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, Qt::red);
+                    }
+                    else
+                    {
+                        scene->removeItem(circle[0]);
+                        scene->removeItem(circle[1]);
+                        scene->removeItem(circle[2]);
                     }
                 }
                 break;
             }
             case QEvent::GraphicsSceneMouseMove:
             {
-                QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-                const QPointF _pt = _me->scenePos();
-                if (circle[0] && circle[0]->isVisible())
+                if (radar_hint && in_radar)
                 {
+                    QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
+                    const QPointF _pt = _me->scenePos();
                     const QPointF _center = circle[0]->rect().center();
                     const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
                     circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
@@ -1076,7 +1077,7 @@ struct S57_ExtendedScene::Data
                     circle[1]->setStartAngle(circle[0]->startAngle() - 7.5 * 16);
                     circle[1]->setSpanAngle(10 * 16);
 
-                    const double _scale = builder->scale() / 200000000.0;
+                    const double _scale = builder->scaleTo1() / 200000000.0;
                     circle[2]->setRect(_center.x() - _scale, _center.y() - _scale / aspect, _scale * 2, _scale * 2 / aspect);
                 }
                 break;
@@ -1103,10 +1104,6 @@ void S57_ExtendedScene::setAspect(double aspect)
 void S57_ExtendedScene::setRadarHintEnabled(bool state)
 {
     d->radar_hint = state;
-    if (!state)
-    {
-        d->removeCircles();
-    }
 }
 
 bool S57_ExtendedScene::isRadarHintEnabled() const

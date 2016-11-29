@@ -1,54 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE TS><TS version="1.1" language="ru_RU">
+<!DOCTYPE TS>
+<TS version="2.1" language="ru_RU">
 <context>
     <name>QObject</name>
     <message>
-        <location filename="s57_drawwindow.cpp" line="93"/>
+        <location filename="s57_drawwindow.cpp" line="188"/>
         <source>Open S57 chart</source>
         <translation>Открыть карту S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="125"/>
+        <location filename="s57_drawwindow.cpp" line="200"/>
         <source>Add S57 chart</source>
         <translation>Добавить карту S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="216"/>
+        <location filename="s57_drawwindow.cpp" line="209"/>
+        <location filename="s57_drawwindow.cpp" line="220"/>
         <source>Open folder with S57 charts</source>
         <translation>Открыть папку с картами S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="508"/>
+        <location filename="s57_drawwindow.cpp" line="140"/>
+        <location filename="s57_drawwindow.cpp" line="463"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="227"/>
+        <location filename="s57_drawwindow.cpp" line="141"/>
         <source>Scanning folder</source>
         <translation>Поиск карт в папке</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="441"/>
+        <location filename="s57_drawwindow.cpp" line="388"/>
         <source>Save visible area</source>
         <translation>Сохранить видимую область</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="467"/>
+        <location filename="s57_drawwindow.cpp" line="395"/>
+        <location filename="s57_drawwindow.cpp" line="414"/>
         <source>Nothing to export</source>
         <translation>Экспорт невозможен</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="467"/>
+        <location filename="s57_drawwindow.cpp" line="395"/>
+        <location filename="s57_drawwindow.cpp" line="414"/>
         <source>Chart is empty</source>
         <translation>Карта пуста</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="460"/>
+        <location filename="s57_drawwindow.cpp" line="407"/>
         <source>Save whole chart</source>
         <translation>Сохранить карту целиком</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="509"/>
+        <location filename="s57_drawwindow.cpp" line="464"/>
         <source>Rendering symbols</source>
         <translation>Сохранение символов</translation>
     </message>
@@ -76,67 +81,72 @@
         <translation>Масштаб</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="95"/>
+        <location filename="S57_DrawWindow.ui" line="97"/>
         <source>Aspect (X:Y)</source>
         <translation>Соотношение (X:Y)</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="108"/>
+        <location filename="S57_DrawWindow.ui" line="111"/>
         <source>Tools</source>
         <translation>Инструменты</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="119"/>
+        <location filename="S57_DrawWindow.ui" line="122"/>
         <source>Open file</source>
         <translation>Открыть карту</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="122"/>
+        <location filename="S57_DrawWindow.ui" line="125"/>
         <source>Ctrl+O</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="127"/>
+        <location filename="S57_DrawWindow.ui" line="130"/>
         <source>Quit</source>
         <translation>Выход</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="135"/>
+        <location filename="S57_DrawWindow.ui" line="138"/>
         <source>Add file</source>
         <translation>Добавить карту</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="138"/>
+        <location filename="S57_DrawWindow.ui" line="141"/>
         <source>Ctrl+Shift+O</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="143"/>
+        <location filename="S57_DrawWindow.ui" line="146"/>
         <source>Open folder</source>
         <translation>Открыть папку карт</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="146"/>
+        <location filename="S57_DrawWindow.ui" line="149"/>
         <source>Ctrl+F</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="154"/>
+        <location filename="S57_DrawWindow.ui" line="157"/>
         <source>Add folder</source>
         <translation>Добавить папку карт</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="157"/>
+        <location filename="S57_DrawWindow.ui" line="160"/>
         <source>Ctrl+Shift+F</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="162"/>
+        <location filename="S57_DrawWindow.ui" line="165"/>
         <source>1:5000000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="165"/>
+        <location filename="S57_DrawWindow.ui" line="288"/>
+        <source>Fullview</source>
+        <translation>Полный вид</translation>
+    </message>
+    <message>
+        <location filename="S57_DrawWindow.ui" line="291"/>
         <source>Ctrl+0</source>
         <translation></translation>
     </message>
@@ -259,6 +269,31 @@
         <location filename="S57_DrawWindow.ui" line="283"/>
         <source>Ctrl+Alt+2</source>
         <translation></translation>
+    </message>
+    <message>
+        <location filename="S57_DrawWindow.ui" line="299"/>
+        <source>Tooltips</source>
+        <translation>Подсказки</translation>
+    </message>
+    <message>
+        <location filename="s57_drawwindow.cpp" line="431"/>
+        <source>Question</source>
+        <translation>Вопрос</translation>
+    </message>
+    <message>
+        <location filename="s57_drawwindow.cpp" line="431"/>
+        <source>All maps will be closed. Continue?</source>
+        <translation>Все карты будут закрыты. Продолжить?</translation>
+    </message>
+    <message>
+        <location filename="s57_drawwindow.cpp" line="431"/>
+        <source>Yes</source>
+        <translation>Да</translation>
+    </message>
+    <message>
+        <location filename="s57_drawwindow.cpp" line="431"/>
+        <source>No</source>
+        <translation>Нет</translation>
     </message>
 </context>
 </TS>

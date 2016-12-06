@@ -854,7 +854,7 @@ void S57_BuildScene::clear()
     {
 		foreach (QGraphicsItem * _item, d->scene->items()) d->scene->removeItem(_item);
         d->scene->clear();
-        d->scene->setSceneRect(-1, -1, 2, 2);
+        d->scene->setSceneRect(QRectF());
     }
     d->groups.clear();
     d->items.clear();
@@ -869,7 +869,7 @@ void S57_BuildScene::setScene(QGraphicsScene * _scene)
     }
     if (d->scene)
     {
-        d->scene->setSceneRect(-1, -1, 2, 2);
+        d->scene->setSceneRect(d->scene->itemsBoundingRect());
     }
 }
 
@@ -942,8 +942,8 @@ void S57_BuildScene::fullView()
 		view->resetMatrix();
 		view->resetTransform();
 	}
-    d->scene->setSceneRect(QRectF());
-	foreach (QGraphicsView * view, d->scene->views())
+    d->scene->setSceneRect(d->scene->itemsBoundingRect());
+    foreach (QGraphicsView * view, d->scene->views())
 	{
 		const double _init_scale = qMin<double>(view->viewport()->width() / d->scene->sceneRect().width(), view->viewport()->height() / d->scene->sceneRect().height());
 		view->scale(_init_scale, _init_scale);

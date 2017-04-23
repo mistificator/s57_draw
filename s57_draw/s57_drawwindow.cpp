@@ -76,7 +76,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
 
     scene = new S57_ExtendedScene();
     scene->setAspect(aspect);
-    scene->setRadarHintEnabled(true);
+    scene->setRulerEnabled(true);
+//    scene->setGridEnabled(false);
     scene->installEventFilter(this);
     ui->S57View->setScene(scene);
     builder.setScene(scene);
@@ -537,6 +538,7 @@ double S57_DrawWindow::precisionAspect()
 void S57_DrawWindow::on_actionFullview_triggered()
 {
     builder.fullView();
+    ui->S57View->scale(1, aspect);
     updateVisibility();
 }
 

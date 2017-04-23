@@ -52,8 +52,11 @@ public:
     ~S57_ExtendedScene();
     void setAspect(double);
 
-    void setRadarHintEnabled(bool);
-    bool isRadarHintEnabled() const;
+    void setRulerEnabled(bool);
+    bool isRulerEnabled() const;
+
+    void setGridEnabled(bool);
+    bool isGridEnabled() const;
 protected:
     void drawForeground(QPainter * _painter, const QRectF & _rect);
     bool event(QEvent * _ev);

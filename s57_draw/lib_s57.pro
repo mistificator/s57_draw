@@ -4,6 +4,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 win32:TARGET =    lib_s57
 unix:TARGET =    _s57
 
+win32:TARGET_EXT = .dll
+
 unix:CONFIG += staticlib
 
 TEMPLATE = lib
@@ -46,3 +48,4 @@ DEFINES += "VERSION_MAJOR=$$VERSION_MAJOR"\
        "VERSION_BUILD=$$VERSION_BUILD"
 
 VERSION = $${VERSION_MAJOR}.$${VERSION_MINOR}.$${VERSION_BUILD}
+

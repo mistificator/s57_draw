@@ -1,4 +1,4 @@
-GDAL_PATH = ../gdal/gdal
+GDAL_PATH = ./../gdal/gdal
 
 win32:LIBS += $$GDAL_PATH/gdal_i.lib
 unix:LIBS += $$GDAL_PATH/.libs/libgdal.a

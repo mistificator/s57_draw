@@ -5,6 +5,8 @@ TARGET =    s57_draw
 TEMPLATE =  app
 DESTDIR = ../s57_bin
 
+win32:TARGET_EXT = .exe
+
 SOURCES  +=\
             s57_draw_main.cpp \
             s57_drawwindow.cpp
@@ -48,3 +50,4 @@ DEFINES += "VERSION_MAJOR=$$VERSION_MAJOR"\
        "VERSION_BUILD=$$VERSION_BUILD"
 
 VERSION = $${VERSION_MAJOR}.$${VERSION_MINOR}.$${VERSION_BUILD}
+

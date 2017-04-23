@@ -1007,8 +1007,8 @@ struct S57_ExtendedScene::Data
     S57_ExtendedScene * scene;
     S57_BuildScene * builder;
     double aspect;
-    bool radar_hint, in_radar;
-    Data(S57_ExtendedScene * _scene): scene(_scene), builder(0), aspect(1.0), radar_hint(false), in_radar(false)
+    bool ruler, in_ruler, grid;
+    Data(S57_ExtendedScene * _scene): scene(_scene), builder(0), aspect(1.0), ruler(false), in_ruler(false), grid(true)
     {
         circle[0] = 0;
         circle[1] = 0;
@@ -1043,10 +1043,10 @@ struct S57_ExtendedScene::Data
             case QEvent::GraphicsSceneMousePress:
             {
                 QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-                if (_me->button() == Qt::RightButton && radar_hint)
+                if (_me->button() == Qt::RightButton && ruler)
                 {
-                    in_radar = !in_radar;
-                    if (in_radar)
+                    in_ruler = !in_ruler;
+                    if (in_ruler)
                     {
                         //circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)), Qt::NoPen, QColor(0, 255, 0, 40));
                         circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)),QPen( QColor(50, 15, 0, 250), 0) , Qt::NoBrush);
@@ -1065,7 +1065,7 @@ struct S57_ExtendedScene::Data
             }
             case QEvent::GraphicsSceneMouseMove:
             {
-                if (radar_hint && in_radar)
+                if (ruler && in_ruler)
                 {
                     QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
                     const QPointF _pt = _me->scenePos();
@@ -1090,6 +1090,111 @@ struct S57_ExtendedScene::Data
             }
         }
     }
+    void drawGrid(QPainter * _painter, const QRectF & _rect)
+    {
+        if (!grid)
+        {
+            return;
+        }
+        QGraphicsView * view = p2v(_painter);
+        if (view == 0)
+        {
+            return;
+        }
+
+        const double aspect = 1.0;
+
+        scene->invalidate(QRectF(), QGraphicsScene::ForegroundLayer);
+
+        _painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
+        _painter->setFont(QFont("Arial", 12));
+
+        const QPointF _scene_top_left = scene->sceneRect().topLeft();
+        const QPointF PtX1_vector((_rect.height()*0.015),(_rect.height()*0.025));
+        const QPointF PtX2_vector((_rect.height()*0.015),-(_rect.height()*0.015));
+
+        const QPointF PtY1_vector((_rect.height()*0.005),-(_rect.height()*0.015));
+        const QPointF PtY2_vector(-(_rect.height()*0.12),-(_rect.height()*0.015));
+
+        const int grid_count_hint = 5;
+        const float _grid_x_step = ( _rect.bottomRight().x()-_rect.topLeft().x())/float(grid_count_hint);
+        const float  _grid_y_step = ( _rect.bottomRight().y()-_rect.topLeft().y())/float(grid_count_hint);
+
+        float dx_origin = qAbs(_scene_top_left.x()-_rect.topLeft().x())/_grid_x_step;
+        dx_origin = (1.0 - dx_origin + int(dx_origin))*_grid_x_step+_rect.topLeft().x();
+        float dy_origin = qAbs(_scene_top_left.y()-_rect.topLeft().y())/_grid_y_step;
+        dy_origin = (1.0 - dy_origin + int(dy_origin))*_grid_y_step+_rect.topLeft().y();
+
+        QPointF PX1 = QPointF(dx_origin,_rect.topLeft().y());
+        QPointF PtX1 = PX1+PtX1_vector;
+        QPointF PY1 = QPointF(_rect.topLeft().x(),dy_origin);
+        QPointF PtY1 = PY1+PtY1_vector;
+
+        QPointF PX2 = QPointF(dx_origin,_rect.bottomRight().y());
+        QPointF PtX2 = PX2+PtX2_vector;
+        QPointF PY2 = QPointF(_rect.bottomRight().x(),dy_origin);
+        QPointF PtY2 = PY2+PtY2_vector;
+
+        const QPointF delta_X(_grid_x_step,0);
+        const QPointF delta_Y(0,_grid_y_step);
+
+        QString sX,sY;
+        for (int _i = 0; _i < grid_count_hint; _i++)
+        {
+            _painter->drawLine(PX1, PX2);
+            _painter->drawLine(PY1, PY2);
+
+            PX1+=delta_X;
+            PX2+=delta_X;
+            PY1+=delta_Y;
+            PY2+=delta_Y;
+        }
+        dy_origin /= aspect;
+
+        _painter->save();
+        _painter->resetTransform();
+
+        for (int _i=0; _i<grid_count_hint;_i++)
+        {
+            if(dx_origin >= 0)
+            {
+                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
+            }
+            else
+            {
+                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
+
+            }
+
+            if(dy_origin >= 0)
+            {
+                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
+            }
+            else
+            {
+                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
+
+            }
+
+            _painter->drawText(view->mapFromScene(PtX1),sX);
+            _painter->drawText(view->mapFromScene(PtX2),sX);
+            _painter->drawText(view->mapFromScene(PtY1),sY);
+
+            QPointF PtY2_adj = view->mapFromScene(PtY2);
+            PtY2_adj.setX(PtY2_adj.x() - QFontMetrics(_painter->font()).width(sY) / 2);
+            _painter->drawText(PtY2_adj,sY);
+
+            dx_origin +=_grid_x_step;
+            dy_origin +=_grid_y_step / aspect;
+
+            PtX1+=delta_X;
+            PtX2+=delta_X;
+            PtY1+=delta_Y;
+            PtY2+=delta_Y;
+
+        }
+        _painter->restore();
+    }
 };
 
 S57_ExtendedScene::S57_ExtendedScene(QObject * _parent): QGraphicsScene(_parent), d(new Data(this))
@@ -1107,116 +1212,31 @@ void S57_ExtendedScene::setAspect(double aspect)
     d->aspect = aspect;
 }
 
-void S57_ExtendedScene::setRadarHintEnabled(bool state)
+void S57_ExtendedScene::setRulerEnabled(bool state)
 {
-    d->radar_hint = state;
+    d->ruler = state;
 }
 
-bool S57_ExtendedScene::isRadarHintEnabled() const
+bool S57_ExtendedScene::isRulerEnabled() const
 {
-    return d->radar_hint;
+    return d->ruler;
+}
+
+void S57_ExtendedScene::setGridEnabled(bool state)
+{
+    d->grid = state;
+    invalidate();
+    update();
+}
+
+bool S57_ExtendedScene::isGridEnabled() const
+{
+    return d->grid;
 }
 
 void S57_ExtendedScene::drawForeground(QPainter * _painter, const QRectF & _rect)
 {
-    QGraphicsView * view = d->p2v(_painter);
-    if (view == 0)
-    {
-        return;
-    }
-
-    const double aspect = 1.0;
-
-    invalidate(QRectF(), QGraphicsScene::ForegroundLayer);
-
-    _painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
-    _painter->setFont(QFont("Arial", 12));
-
-    const QPointF _scene_top_left = sceneRect().topLeft();
-    const QPointF PtX1_vector((_rect.height()*0.015),(_rect.height()*0.025));
-    const QPointF PtX2_vector((_rect.height()*0.015),-(_rect.height()*0.015));
-
-    const QPointF PtY1_vector((_rect.height()*0.005),-(_rect.height()*0.015));
-    const QPointF PtY2_vector(-(_rect.height()*0.12),-(_rect.height()*0.015));
-
-    const int grid_count_hint = 5;
-    const float _grid_x_step = ( _rect.bottomRight().x()-_rect.topLeft().x())/float(grid_count_hint);
-    const float  _grid_y_step = ( _rect.bottomRight().y()-_rect.topLeft().y())/float(grid_count_hint);
-
-    float dx_origin = qAbs(_scene_top_left.x()-_rect.topLeft().x())/_grid_x_step;
-    dx_origin = (1.0 - dx_origin + int(dx_origin))*_grid_x_step+_rect.topLeft().x();
-    float dy_origin = qAbs(_scene_top_left.y()-_rect.topLeft().y())/_grid_y_step;
-    dy_origin = (1.0 - dy_origin + int(dy_origin))*_grid_y_step+_rect.topLeft().y();
-
-    QPointF PX1 = QPointF(dx_origin,_rect.topLeft().y());
-    QPointF PtX1 = PX1+PtX1_vector;
-    QPointF PY1 = QPointF(_rect.topLeft().x(),dy_origin);
-    QPointF PtY1 = PY1+PtY1_vector;
-
-    QPointF PX2 = QPointF(dx_origin,_rect.bottomRight().y());
-    QPointF PtX2 = PX2+PtX2_vector;
-    QPointF PY2 = QPointF(_rect.bottomRight().x(),dy_origin);
-    QPointF PtY2 = PY2+PtY2_vector;
-
-    const QPointF delta_X(_grid_x_step,0);
-    const QPointF delta_Y(0,_grid_y_step);
-
-    QString sX,sY;
-    for (int _i = 0; _i < grid_count_hint; _i++)
-    {
-        _painter->drawLine(PX1, PX2);
-        _painter->drawLine(PY1, PY2);
-
-        PX1+=delta_X;
-        PX2+=delta_X;
-        PY1+=delta_Y;
-        PY2+=delta_Y;
-    }
-    dy_origin /= aspect;
-
-    _painter->save();
-    _painter->resetTransform();
-
-    for (int _i=0; _i<grid_count_hint;_i++)
-    {
-        if(dx_origin >= 0)
-        {
-            sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
-        }
-        else
-        {
-            sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
-
-        }
-
-        if(dy_origin >= 0)
-        {
-            sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
-        }
-        else
-        {
-            sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
-
-        }
-
-        _painter->drawText(view->mapFromScene(PtX1),sX);
-        _painter->drawText(view->mapFromScene(PtX2),sX);
-        _painter->drawText(view->mapFromScene(PtY1),sY);
-
-        QPointF PtY2_adj = view->mapFromScene(PtY2);
-        PtY2_adj.setX(PtY2_adj.x() - QFontMetrics(_painter->font()).width(sY) / 2);
-        _painter->drawText(PtY2_adj,sY);
-
-        dx_origin +=_grid_x_step;
-        dy_origin +=_grid_y_step / aspect;
-
-        PtX1+=delta_X;
-        PtX2+=delta_X;
-        PtY1+=delta_Y;
-        PtY2+=delta_Y;
-
-    }
-    _painter->restore();
+    d->drawGrid(_painter, _rect);
 }
 
 bool S57_ExtendedScene::event(QEvent * _ev)

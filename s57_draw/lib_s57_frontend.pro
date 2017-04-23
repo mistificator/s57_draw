@@ -4,6 +4,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET =    lib_s57_frontend
 TEMPLATE =  app
 
+win32:TARGET_EXT = .exe
+
 DESTDIR = ../s57_bin
 
 CONFIG +=   qt console thread
@@ -35,3 +37,4 @@ DEFINES += "VERSION_MAJOR=$$VERSION_MAJOR"\
        "VERSION_BUILD=$$VERSION_BUILD"
 
 VERSION = $${VERSION_MAJOR}.$${VERSION_MINOR}.$${VERSION_BUILD}
+

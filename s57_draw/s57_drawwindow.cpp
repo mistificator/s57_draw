@@ -13,6 +13,149 @@
 
 #include "s52_symbol.h"
 
+class QFixedPixmapItem: public QGraphicsItem
+{
+public:
+    QFixedPixmapItem(): QGraphicsItem(), pixmap_ptr(0)
+    {
+        setScreenSize(QSize(10, 10));
+    }
+    void setScreenSize(const QSize & _size)
+    {
+        screen_size = _size;
+    }
+    QSize screenSize() const
+    {
+        return screen_size;
+    }
+    void setPixmap(const QPixmap & _pixmap)
+    {
+        pixmap = _pixmap;
+    }
+    void setPixmap(const QPixmap * _pixmap)
+    {
+        pixmap_ptr = (QPixmap *)_pixmap;
+    }
+    QRectF boundingRect() const
+    {
+        QRectF _r;
+        if (scene() && (!scene()->views().isEmpty()))
+        {
+            QGraphicsView * _view = scene()->views().front();
+            QPoint _pt = _view->mapFromScene(scenePos());
+            _r = mapFromScene(_view->mapToScene(QRect(QPoint(_pt.x() - screen_size.width() / 2, _pt.y() - screen_size.height() / 2), screen_size))).boundingRect();
+            if (_r.size() == screen_size)
+            {
+                return (QRectF());
+            }
+        }
+        return (_r);
+    }
+    void paint(QPainter * _painter, const QStyleOptionGraphicsItem * /*_option*/, QWidget * /*_widget*/)
+    {
+        if (pixmap_ptr)
+        {
+            _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
+        }
+        else
+        {
+            _painter->drawPixmap(boundingRect(), pixmap, pixmap.rect());
+        }
+    }
+
+private:
+    QSize screen_size;
+    QPixmap pixmap;
+    QPixmap * pixmap_ptr;
+};
+
+class RadarItem: public QFixedPixmapItem
+{
+public:
+    RadarItem(): block_size(8192), positions_count(4096)
+    {
+    }
+    ~RadarItem() {}
+    void setMetrics(int _portion_size, int _positions_count)
+    {
+        block_size = _portion_size;
+        positions_count = _positions_count;
+
+        reset();
+    }
+    void reset()
+    {
+        createSrcMap();
+        createDstMap();
+    }
+    void adjustSize()
+    {
+        createDstMap();
+    }
+    void addData(const QVector<short> & block, int position)
+    {
+        _addData(block, position);
+    }
+private:
+    int block_size, positions_count;
+    QVector<QPointF> map_src;
+    QVector<int> map_dst;
+    QVector<short> out;
+    void createSrcMap()
+    {
+        map_src.resize(block_size * positions_count);
+        map_src.fill(QPointF(0, 0));
+        const double angle_step = 2.0 * M_PI / positions_count;
+        for (int t = 0; t < positions_count; t++)
+        {
+            const double angle = t * angle_step;
+            for (int v = 0; v < block_size; v++)
+            {
+                map_src[block_size * t + v] = QPointF(v * ::cosf(M_PI / 2 - angle), v * ::sinf(M_PI / 2 - angle));
+            }
+        }
+    }
+    void createDstMap()
+    {
+        const int w = screenSize().width();
+        const int h = screenSize().height();
+        out.resize(w * h);
+        out.fill(0);
+
+        map_dst.resize(block_size * positions_count);
+        map_dst.fill(0);
+
+        const double xw = 1.0 * w / (2 * block_size);
+        const double yh = 1.0 * h / (2 * block_size);
+
+        for (int t = 0; t < positions_count; t++)
+        {
+            for (int v = 0; v < block_size; v++)
+            {
+                const QPointF & _map_src = map_src[block_size * t + v];
+                const double x = _map_src.x() * xw + w / 2;
+                const double y = _map_src.y() * yh + w / 2;
+                map_dst[block_size * t + v] = y * w + x;
+            }
+        }
+    }
+    void _addData(const QVector<short> & block, int position)
+    {
+        const int w = screenSize().width();
+        const int * offset_ptr = map_dst.constData() + block_size * position;
+        const short * block_ptr = block.constData();
+        short * out_ptr = out.data();
+        for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
+        {
+            short & _out = out_ptr[* offset_ptr];
+            if (_out < * block_ptr)
+            {
+                _out = * block_ptr;
+            }
+        }
+    }
+};
+
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11)

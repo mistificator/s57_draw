@@ -14,3 +14,7 @@ S57 library and demo project.
 
 * [GDAL](http://www.gdal.org/)
 * [OpenCPN](http://opencpn.org/)
+* [ToroiseGit](https://tortoisegit.org/download/)
+* [Git for Windows](https://git-for-windows.github.io/)
+* [Qt5](https://www.qt.io/download-open-source/#section-2)
+* [MSVC toolchains](https://www.visualstudio.com/vs/visual-studio-express/)

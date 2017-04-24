@@ -276,23 +276,14 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
 
 
     ri = new RadarItem();
-    ri->setVisible(true);
     ri->setZValue(1000000);
-
     scene->addItem(ri);
-    scene->addRect(0, 0, 10, 10, QPen(Qt::black));
-    scene->setSceneRect(0, 0, 100, 100);
-
-    const int sz = qMin(size().width(), size().height());
-    ri->setScreenSize(QSize(sz, sz));
 
     radar_emu.resize(8192 * 4096);
     for (int i = 0; i < 8192 * 4096; i++)
     {
         radar_emu[i] = qrand();
     }
-
-    builder.fullView();
 
     timer_id = startTimer(0);
 }
@@ -765,13 +756,23 @@ void S57_DrawWindow::on_actionTooltips_triggered(bool t)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }
 
+void S57_DrawWindow::showEvent(QShowEvent *)
+{
+    if (ri == 0)
+    {
+        return;
+    }
+    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
+    ri->setScreenSize(QSize(sz, sz));
+}
+
 void S57_DrawWindow::resizeEvent(QResizeEvent *)
 {
     if (ri == 0)
     {
         return;
     }
-    const int sz = qMin(size().width(), size().height());
+    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
 }
 
@@ -781,7 +782,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
     {
         return;
     }
-    ri->setPos(ui->S57View->mapToScene(ui->S57View->viewport()->rect().center())); // anchor hack
+    ri->setPos(ui->S57View->mapToScene(ui->S57View->viewport()->rect().center())); // anchor center
     static int pos = -1;
     for (int k = 0; k < 16; k++)
     {
@@ -799,3 +800,4 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         ri->addData(v, pos);
     }
 }
+

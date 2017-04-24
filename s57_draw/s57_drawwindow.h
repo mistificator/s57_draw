@@ -22,7 +22,7 @@ public:
     explicit S57_DrawWindow(QWidget *parent = 0);
     ~S57_DrawWindow();
 
-private slots:
+private slots:   
     void on_actionOpen_triggered();
     void on_actionQuit_triggered();
     void on_actionAdd_triggered();
@@ -47,7 +47,7 @@ private slots:
     void on_action_aspect_1_1_triggered();
     void on_action_aspect_1_2_triggered();
 	void on_actionFullview_triggered();
-	void on_actionTooltips_triggered(bool);
+	void on_actionTooltips_triggered(bool); 
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedScene * scene;
@@ -73,6 +73,7 @@ private:
     QVector<short> radar_emu;
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);
+    void showEvent(QShowEvent *);
 };
 
 #endif // S57_DrawWindow_H

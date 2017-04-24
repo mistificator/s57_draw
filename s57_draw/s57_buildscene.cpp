@@ -890,8 +890,11 @@ void S57_BuildScene::build(const QString & _file_name)
 #endif
     if (_ds)
     {
-//        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
-//        qDebug() << _file_name << "opened with" << _ds->GetDriverName();
+#if (GDAL_VERSION_MAJOR > 1)
+        qDebug() << _file_name << "opened with" << _ds->GetDriverName();
+#else
+        qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
+#endif
         d->build_s57(_ds);
         delete _ds;
     }

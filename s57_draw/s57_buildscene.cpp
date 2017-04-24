@@ -26,7 +26,7 @@ double mercator_sretch = 1.0;
 class QFixedPixmapItem: public QGraphicsItem
 {
 public:
-    QFixedPixmapItem(): QGraphicsItem(), pixmap_ptr(0)
+    QFixedPixmapItem(QGraphicsItem * parent = 0): QGraphicsItem(parent), pixmap_ptr(0)
     {
         setScreenSize(QSize(10, 10));
     }
@@ -586,6 +586,7 @@ struct S57_BuildScene::Data
             OGRLayer * _layer = _ds->GetLayer(_idx);
             _layer->ResetReading();
             QString _layer_name = QString(_layer->GetLayerDefn()->GetName()).toUpper();
+            qDebug() << _idx << _layer_name;
             bool _ignore_group = (_layer_name == "DEPARE") || (_layer_name == "LNDARE");
             QGraphicsItem * _item;
             while(OGRFeature * _feat = _layer->GetNextFeature())

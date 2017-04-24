@@ -4,7 +4,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 win32:TARGET =    lib_s57
 unix:TARGET =    _s57
 
-win32:TARGET_EXT = .dll
+greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .dll
 
 unix:CONFIG += staticlib
 

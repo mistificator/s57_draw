@@ -12,6 +12,8 @@ namespace Ui {
 class S57_DrawWindow;
 }
 
+class RadarItem;
+
 class S57_DrawWindow : public QMainWindow
 {
     Q_OBJECT
@@ -65,6 +67,12 @@ private:
     void recreateScene();
     void scaleTo1(double _scale);
     double precisionAspect();
+
+    RadarItem * ri;
+    int timer_id;
+    QVector<short> radar_emu;
+    void resizeEvent(QResizeEvent *);
+    void timerEvent(QTimerEvent *);
 };
 
 #endif // S57_DrawWindow_H

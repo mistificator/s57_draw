@@ -16,11 +16,11 @@
 class QFixedPixmapItem: public QGraphicsItem
 {
 public:
-    QFixedPixmapItem(): QGraphicsItem(), pixmap_ptr(0)
+    QFixedPixmapItem(): QGraphicsItem(), pixmap_ptr(0), image_ptr(0), src_type(Pixmap)
     {
         setScreenSize(QSize(10, 10));
     }
-    void setScreenSize(const QSize & _size)
+    virtual void setScreenSize(const QSize & _size)
     {
         screen_size = _size;
     }
@@ -31,10 +31,22 @@ public:
     void setPixmap(const QPixmap & _pixmap)
     {
         pixmap = _pixmap;
+        src_type = Pixmap;
     }
     void setPixmap(const QPixmap * _pixmap)
     {
         pixmap_ptr = (QPixmap *)_pixmap;
+        src_type = Pixmap_Ptr;
+    }
+    void setImage(const QImage & _image)
+    {
+        image = _image;
+        src_type = Image;
+    }
+    void setImage(const QImage * _image)
+    {
+        image_ptr = (QImage *)_image;
+        src_type = Image_Ptr;
     }
     QRectF boundingRect() const
     {
@@ -53,13 +65,20 @@ public:
     }
     void paint(QPainter * _painter, const QStyleOptionGraphicsItem * /*_option*/, QWidget * /*_widget*/)
     {
-        if (pixmap_ptr)
+        switch (src_type)
         {
-            _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
-        }
-        else
-        {
+        case Pixmap:
             _painter->drawPixmap(boundingRect(), pixmap, pixmap.rect());
+            break;
+        case Pixmap_Ptr:
+            _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
+            break;
+        case Image:
+            _painter->drawImage(boundingRect(), image, image.rect());
+            break;
+        case Image_Ptr:
+            _painter->drawImage(boundingRect(), * image_ptr, image_ptr->rect());
+            break;
         }
     }
 
@@ -67,13 +86,18 @@ private:
     QSize screen_size;
     QPixmap pixmap;
     QPixmap * pixmap_ptr;
+    QImage image;
+    QImage * image_ptr;
+    enum {Pixmap = 0, Pixmap_Ptr, Image, Image_Ptr};
+    int src_type;
 };
 
 class RadarItem: public QFixedPixmapItem
 {
 public:
-    RadarItem(): block_size(8192), positions_count(4096)
+    RadarItem(): QFixedPixmapItem()
     {
+        setMetrics(8192, 4096);
     }
     ~RadarItem() {}
     void setMetrics(int _portion_size, int _positions_count)
@@ -96,11 +120,17 @@ public:
     {
         _addData(block, position);
     }
+    void setScreenSize(const QSize & _size)
+    {
+        QFixedPixmapItem::setScreenSize(_size);
+        adjustSize();
+    }
 private:
     int block_size, positions_count;
     QVector<QPointF> map_src;
     QVector<int> map_dst;
     QVector<short> out;
+    QImage img;
     void createSrcMap()
     {
         map_src.resize(block_size * positions_count);
@@ -111,40 +141,57 @@ private:
             const double angle = t * angle_step;
             for (int v = 0; v < block_size; v++)
             {
-                map_src[block_size * t + v] = QPointF(v * ::cosf(M_PI / 2 - angle), v * ::sinf(M_PI / 2 - angle));
+                map_src[block_size * t + v] = QPointF(v * ::cosf(angle - M_PI / 2), v * ::sinf(angle - M_PI / 2));
             }
         }
     }
     void createDstMap()
     {
+        if (map_src.size() < block_size * positions_count)
+        {
+            return;
+        }
         const int w = screenSize().width();
         const int h = screenSize().height();
         out.resize(w * h);
         out.fill(0);
 
+        img = QImage(w, h, QImage::Format_ARGB32);
+        img.fill(QColor(0, 0, 0, 0));
+        setImage(& img);
+
         map_dst.resize(block_size * positions_count);
         map_dst.fill(0);
 
-        const double xw = 1.0 * w / (2 * block_size);
-        const double yh = 1.0 * h / (2 * block_size);
+        const double xw = (1.0 * w) / (2 * block_size);
+        const double yh = (1.0 * h) / (2 * block_size);
 
         for (int t = 0; t < positions_count; t++)
         {
             for (int v = 0; v < block_size; v++)
             {
-                const QPointF & _map_src = map_src[block_size * t + v];
-                const double x = _map_src.x() * xw + w / 2;
-                const double y = _map_src.y() * yh + w / 2;
-                map_dst[block_size * t + v] = y * w + x;
+                const int idx = block_size * t + v;
+                const QPointF & _map_src = map_src[idx];
+                const double x = _map_src.x() * xw + (w / 2.0);
+                const double y = _map_src.y() * yh + (h / 2.0);
+                map_dst[idx] = (int)y * w + (int)x;
             }
         }
     }
     void _addData(const QVector<short> & block, int position)
     {
-        const int w = screenSize().width();
+        if (map_dst.size() < block_size * positions_count)
+        {
+            return;
+        }
+        if (position == 0)
+        {
+            out.fill(0);
+        }
         const int * offset_ptr = map_dst.constData() + block_size * position;
         const short * block_ptr = block.constData();
         short * out_ptr = out.data();
+        unsigned __int32 * img_ptr = (unsigned __int32 *)img.bits();
         for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
         {
             short & _out = out_ptr[* offset_ptr];
@@ -152,13 +199,14 @@ private:
             {
                 _out = * block_ptr;
             }
+            img_ptr[* offset_ptr] = qRgba(0, 0xff & _out, 0, _out > 0 ? 255 : 0);
         }
     }
 };
 
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11)
+    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11), ri(0)
 {
     ui->setupUi(this);
     ui->statusbar->addPermanentWidget(position_label = new QLabel(), 1);
@@ -225,6 +273,28 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->S57View->setScene(scene);
     builder.setScene(scene);
     builder.fullView();
+
+
+    ri = new RadarItem();
+    ri->setVisible(true);
+    ri->setZValue(1000000);
+
+    scene->addItem(ri);
+    scene->addRect(0, 0, 10, 10, QPen(Qt::black));
+    scene->setSceneRect(0, 0, 100, 100);
+
+    const int sz = qMin(size().width(), size().height());
+    ri->setScreenSize(QSize(sz, sz));
+
+    radar_emu.resize(8192 * 4096);
+    for (int i = 0; i < 8192 * 4096; i++)
+    {
+        radar_emu[i] = qrand();
+    }
+
+    builder.fullView();
+
+    timer_id = startTimer(0);
 }
 
 S57_DrawWindow::~S57_DrawWindow()
@@ -276,6 +346,9 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     {
         return;
     }
+
+    scene->removeItem(ri);
+
     switch (mode)
     {
     case OpenMapDir:
@@ -325,6 +398,8 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     progress->deleteLater();
     progress = 0; count = 0;
     ui->S57View->setUpdatesEnabled(true);
+
+    scene->addItem(ri);
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -688,4 +763,39 @@ void S57_DrawWindow::on_actionFullview_triggered()
 void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 {
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
+}
+
+void S57_DrawWindow::resizeEvent(QResizeEvent *)
+{
+    if (ri == 0)
+    {
+        return;
+    }
+    const int sz = qMin(size().width(), size().height());
+    ri->setScreenSize(QSize(sz, sz));
+}
+
+void S57_DrawWindow::timerEvent(QTimerEvent *)
+{
+    if (ri == 0)
+    {
+        return;
+    }
+    ri->setPos(ui->S57View->mapToScene(ui->S57View->viewport()->rect().center())); // anchor hack
+    static int pos = -1;
+    for (int k = 0; k < 16; k++)
+    {
+        pos++;
+        if (pos > 4096)
+        {
+            pos = 0;
+        }
+        QVector<short> v(8192);
+        v.fill(0);
+        for (int i = 0; i < v.count(); i += qrand() / 100)
+        {
+            v[i] = radar_emu[8192 * pos + i];
+        }
+        ri->addData(v, pos);
+    }
 }

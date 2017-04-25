@@ -23,6 +23,8 @@ public:
     ~S57_DrawWindow();
 
 private slots:   
+    void viewportMoved();
+
     void on_actionOpen_triggered();
     void on_actionQuit_triggered();
     void on_actionAdd_triggered();
@@ -48,6 +50,7 @@ private slots:
     void on_action_aspect_1_2_triggered();
 	void on_actionFullview_triggered();
 	void on_actionTooltips_triggered(bool); 
+    void on_actionRadar_triggered(bool);
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedScene * scene;
@@ -69,8 +72,10 @@ private:
     double precisionAspect();
 
     RadarItem * ri;
+    QGraphicsPolygonItem * rpi;
     int timer_id;
     QVector<short> radar_emu;
+    QLabel * radar_sector;
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);
     void showEvent(QShowEvent *);

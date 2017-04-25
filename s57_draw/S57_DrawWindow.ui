@@ -104,6 +104,7 @@
     <addaction name="actionLandAndSea"/>
     <addaction name="actionMouse_dragging"/>
     <addaction name="actionTooltips"/>
+    <addaction name="actionRadar"/>
     <addaction name="menuAspect_X_Y"/>
    </widget>
    <widget class="QMenu" name="menuTools">
@@ -297,6 +298,14 @@
    </property>
    <property name="text">
     <string>Tooltips</string>
+   </property>
+  </action>
+  <action name="actionRadar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Radar</string>
    </property>
   </action>
  </widget>

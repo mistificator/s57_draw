@@ -76,9 +76,11 @@ private:
     int timer_id;
     QVector<short> radar_emu;
     QLabel * radar_sector;
+    QRectF roi_rect;
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);
     void showEvent(QShowEvent *);
+    void closeEvent(QCloseEvent *);
 };
 
 #endif // S57_DrawWindow_H

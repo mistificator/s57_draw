@@ -142,20 +142,32 @@ public:
     }
     QImage roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const // angles in radians, 0 <= angle <= 2 * M_PI
     {
-        if (start_distance < 0 || stop_distance >= block_size || start_distance > stop_distance)
+        if (start_distance < 0 || stop_distance > block_size || start_distance > stop_distance)
         {
             return QImage();
         }
-        if (start_angle < 0 || stop_angle < 0 || start_angle > 2 * M_PI || stop_angle > 2 * M_PI)
+        while (start_angle < 0)
         {
-            return QImage();
+            start_angle += 2 * M_PI;
+        }
+        while (stop_angle < 0)
+        {
+            stop_angle += 2 * M_PI;
+        }
+        while (start_angle >= 2 * M_PI)
+        {
+            start_angle -= 2 * M_PI;
+        }
+        while (stop_angle >= 2 * M_PI)
+        {
+            stop_angle -= 2 * M_PI;
         }
         const double angle_step = 2.0 * M_PI / positions_count;
         const int _start_angle = start_angle / angle_step;
-        const int _stop_angle1 = start_angle < stop_angle ? stop_angle / angle_step : 2 * M_PI;
+        const int _stop_angle1 = start_angle < stop_angle ? stop_angle / angle_step : 2 * M_PI / angle_step;
         const int _stop_angle2 = start_angle < stop_angle ? 0 : stop_angle / angle_step;
 
-        QSize sz(start_angle < stop_angle ? _stop_angle1 - _start_angle : positions_count - _start_angle + _stop_angle2, stop_distance - start_distance);
+        QSize sz(stop_distance - start_distance, start_angle < stop_angle ? _stop_angle1 - _start_angle : positions_count - _start_angle + _stop_angle2);
         if (sec_img.size() != sz)
         {
             sec_img = QImage(sz, QImage::Format_RGB32);
@@ -163,7 +175,7 @@ public:
         unsigned int * img_ptr = (unsigned int *)sec_img.bits();
         for (int t = _start_angle; t < _stop_angle1; t++)
         {
-            const short * _src = src.constData() + t * block_size;
+            const short * _src = src.constData() + t * block_size + start_distance;
             for (int v = start_distance; v < stop_distance; v++)
             {
                 * img_ptr++ = colorConvert(* _src++);
@@ -171,7 +183,7 @@ public:
         }
         for (int t = 0; t < _stop_angle2; t++)
         {
-            const short * _src = src.constData() + t * block_size;
+            const short * _src = src.constData() + t * block_size + start_distance;
             for (int v = start_distance; v < stop_distance; v++)
             {
                 * img_ptr++ = colorConvert(* _src++);
@@ -210,6 +222,10 @@ private:
         }
         const int w = screenSize().width();
         const int h = screenSize().height();
+        if (dst.size() == w * h)
+        {
+            return;
+        }
         dst.resize(w * h);
         dst.fill(0);
 
@@ -350,7 +366,9 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     scene->addItem(ri);
 
     rpi = new QGraphicsPolygonItem();
-    rpi->setPen(QPen(Qt::red, 5));
+    QPen rpi_pen(Qt::red, 5);
+    rpi_pen.setCosmetic(true);
+    rpi->setPen(rpi_pen);
     rpi->setZValue(ri->zValue() + 1);
     scene->addItem(rpi);
 
@@ -562,6 +580,47 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                     QString::number(_pt.x()) + (_pt.x() > 0 ? "E" : "W") + QString(", ") +
                     QString::number(-_pt.y()) + (_pt.y() > 0 ? "S" : "N") + QString(") ");
             position_label->setText(_info);
+
+            if (radar_sector->isVisible())
+            {
+                QPointF tl = ui->S57View->mapToScene(ui->S57View->viewport()->rect().topLeft());
+                QPointF br = ui->S57View->mapToScene(ui->S57View->viewport()->rect().bottomRight());
+                QPointF ct = ui->S57View->mapToScene(ui->S57View->viewport()->rect().center());
+
+                const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
+
+                double angle = ::atan2(_pt.y() - ct.y(), _pt.x() - ct.x());
+                double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) + 1e-15);
+
+                if (length < 0.1 * radius)
+                {
+                    length = 0.1 * radius;
+                }
+                if (length > 0.9 * radius)
+                {
+                    length = 0.9 * radius;
+                }
+
+                const double l1 = length - 0.1 * radius;
+                const double l2 = length + 0.1 * radius;
+                const double a1 = angle - 0.1;
+                const double a2 = angle + 0.1;
+                QPolygonF rpi_poly;
+                rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+                rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
+                rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
+                rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
+                rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+
+                rpi->setPolygon(rpi_poly);
+
+                rpi->setPos(ct);
+
+                roi_rect.setLeft(a1 + M_PI / 2);
+                roi_rect.setTop(a2 + M_PI / 2);
+                roi_rect.setBottom(l1 * 8192 / radius);
+                roi_rect.setRight(l2 * 8192 / radius);
+            }
             break;
         }
         case QEvent::GraphicsSceneWheel:
@@ -610,6 +669,7 @@ void S57_DrawWindow::updateVisibility()
         builder.updateVisibility(_scale);
     }
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
+    viewportMoved();
 }
 
 void S57_DrawWindow::scaleTo1(double _scale)
@@ -845,15 +905,11 @@ void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 
 void S57_DrawWindow::showEvent(QShowEvent *)
 {
-    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
-    ri->setScreenSize(QSize(sz, sz));
     viewportMoved();
 }
 
 void S57_DrawWindow::resizeEvent(QResizeEvent *)
 {
-    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
-    ri->setScreenSize(QSize(sz, sz));
     viewportMoved();
 }
 
@@ -873,19 +929,32 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         {
             v[i] = radar_emu[8192 * pos + i];
         }
+        if (pos < 3072)
+        {
+            for (int i = 4111; i < 4211; i++)
+            {
+                v[i] = 0xff;
+            }
+        }
+        else
+        {
+            for (int i = 7111; i < 7211; i++)
+            {
+                v[i] = 0xff;
+            }
+        }
         ri->addData(v, pos);
     }
     if (radar_sector->isVisible())
     {
-        radar_sector->setPixmap(QPixmap::fromImage(ri->roi(0.1, 0.5, 100, 1000).scaled(radar_sector->size())));
-        rpi->setPolygon(QPolygonF() << QPointF(0, 0) << QPointF(10, 10) << QPointF(0, 10));
-        QPointF center = ui->S57View->mapToScene(ui->S57View->viewport()->rect().center());
-        rpi->setPos(center);
+        radar_sector->setPixmap(QPixmap::fromImage(ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right()).scaled(radar_sector->size())));
     }
 }
 
 void S57_DrawWindow::viewportMoved()
 {
+    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
+    ri->setScreenSize(QSize(sz, sz));
     ri->setPos(ui->S57View->mapToScene(ui->S57View->viewport()->rect().center())); // anchor center
 }
 
@@ -900,3 +969,9 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         radar_sector->show();
     }
 }
+
+void S57_DrawWindow::closeEvent(QCloseEvent *)
+{
+    radar_sector->close();
+}
+

@@ -372,11 +372,9 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     rpi->setZValue(ri->zValue() + 1);
     scene->addItem(rpi);
 
-    if (QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("radar", false).toBool())
-    {
-        ui->actionRadar->setChecked(true);
-        on_actionRadar_triggered(true);
-    }
+    bool show_radar = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("radar", false).toBool();
+    ui->actionRadar->setChecked(show_radar);
+    on_actionRadar_triggered(show_radar);
 
     radar_emu.resize(8192 * 4096);
     for (int i = 0; i < 8192 * 4096; i++)
@@ -967,6 +965,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
     if (checked)
     {
         radar_sector->show();
+    }
+    else
+    {
+        radar_sector->hide();
     }
 }
 

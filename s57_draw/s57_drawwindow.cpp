@@ -189,7 +189,11 @@ public:
                 * img_ptr++ = colorConvert(* _src++);
             }
         }
-        return sec_img;
+        QPoint center = sec_img.rect().center();
+        QMatrix matrix;
+        matrix.translate(center.x(), center.y());
+        matrix.rotate(-90);
+        return sec_img.transformed(matrix);
     }
 private:
     int block_size, positions_count;
@@ -265,7 +269,7 @@ private:
         {
             dst.fill(0);
         }
-        qMemCopy(src.data() + block_size * position, block.constData(), block_size * sizeof(src[0]));
+        ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src[0]));
         const int * offset_ptr = map_dst.constData() + block_size * position;
         const short * block_ptr = block.constData();
         short * dst_ptr = dst.data();
@@ -923,7 +927,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         }
         QVector<short> v(8192);
         v.fill(0);
-        for (int i = 0; i < v.count(); i += qrand() / 100)
+        for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
         {
             v[i] = radar_emu[8192 * pos + i];
         }

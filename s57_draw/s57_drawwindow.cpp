@@ -574,6 +574,7 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
     {
         switch (_ev->type())
         {
+        case QEvent::GraphicsSceneMousePress:
         case QEvent::GraphicsSceneMouseMove:
         {
             QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
@@ -583,11 +584,11 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                     QString::number(-_pt.y()) + (_pt.y() > 0 ? "S" : "N") + QString(") ");
             position_label->setText(_info);
 
-            if (radar_sector->isVisible())
+            if (radar_sector->isVisible() && (_me->buttons() & Qt::LeftButton) == Qt::LeftButton)
             {
-                QPointF tl = ui->S57View->mapToScene(ui->S57View->viewport()->rect().topLeft());
-                QPointF br = ui->S57View->mapToScene(ui->S57View->viewport()->rect().bottomRight());
-                QPointF ct = ui->S57View->mapToScene(ui->S57View->viewport()->rect().center());
+                QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
+                QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
+                QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
 
                 const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
 
@@ -957,7 +958,7 @@ void S57_DrawWindow::viewportMoved()
 {
     const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
-    ri->setPos(ui->S57View->mapToScene(ui->S57View->viewport()->rect().center())); // anchor center
+    ri->setPos(ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center())); // anchor center
 }
 
 
@@ -969,10 +970,14 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
     if (checked)
     {
         radar_sector->show();
+        ui->actionMouse_dragging->setChecked(false);
+        on_actionMouse_dragging_triggered(false);
+        ui->actionMouse_dragging->setEnabled(false);
     }
     else
     {
         radar_sector->hide();
+        ui->actionMouse_dragging->setEnabled(true);
     }
 }
 

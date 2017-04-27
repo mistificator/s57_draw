@@ -1092,6 +1092,7 @@ struct S57_ExtendedScene::Data
                 }
                 break;
             }
+            _ev->ignore();
         }
     }
     void drawGrid(QPainter * _painter, const QRectF & _rect)

@@ -9,9 +9,9 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QScrollBar>
+
 #include <cmath>
 #include "cpl_port.h"
-
 #include "s52_symbol.h"
 
 class QFixedPixmapItemEx: public QGraphicsItem
@@ -388,6 +388,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
 
     connect(ui->S57View->horizontalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(viewportMoved()));
     connect(ui->S57View->verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(viewportMoved()));
+//    connect(ui->S57View->horizontalScrollBar(), SIGNAL(sliderMoved(int)), this, SLOT(viewportMoved()));
+//    connect(ui->S57View->verticalScrollBar(), SIGNAL(sliderMoved(int)), this, SLOT(viewportMoved()));
 
     timer_id = startTimer(0);
 }
@@ -442,6 +444,7 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         return;
     }
 
+    coasts.clear();
     scene->removeItem(ri);
     scene->removeItem(rpi);
 
@@ -498,6 +501,17 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     scene->addItem(ri);
     scene->addItem(rpi);
     viewportMoved();
+
+    foreach(QGraphicsItem * item, scene->items())
+    {
+        if (item->data(S57_BuildScene::ItemLayerNameKey).toString().compare("LNDARE", Qt::CaseInsensitive) == 0)
+        {
+            if (QGraphicsPolygonItem * coast_item = dynamic_cast<QGraphicsPolygonItem *>(item))
+            {
+                coasts << coast_item;
+            }
+        }
+    }
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -956,9 +970,39 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
 
 void S57_DrawWindow::viewportMoved()
 {
+    QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
+    QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
+    QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
+
+    const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
+
     const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
-    ri->setPos(ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center())); // anchor center
+    ri->setPos(ct); // anchor center
+    rpi->setPos(ct);
+
+    foreach (QGraphicsPolygonItem * ri_coast_item, ri_coasts)
+    {
+        scene->removeItem(ri_coast_item);
+        delete ri_coast_item;
+    }
+    ri_coasts.clear();
+    QPainterPath p1;
+    p1.addEllipse(ct, radius, radius);
+    foreach (QGraphicsPolygonItem * coast_item, coasts)
+    {
+        QPainterPath p2;
+        p2.addPolygon(coast_item->polygon());
+        if (p1.intersects(p2))
+        {
+            QGraphicsPolygonItem * ri_coast_item = new QGraphicsPolygonItem(coast_item->polygon());
+            QPen pen(Qt::green, 5);
+            pen.setCosmetic(true);
+            ri_coast_item->setPen(pen);
+            scene->addItem(ri_coast_item);
+            ri_coasts << ri_coast_item;
+        }
+    }
 }
 
 

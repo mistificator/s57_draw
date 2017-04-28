@@ -612,6 +612,7 @@ struct S57_BuildScene::Data
                         switch (_wkb)
                         {
                         case wkbPoint:
+                        {
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
@@ -624,7 +625,9 @@ struct S57_BuildScene::Data
 								_item->setToolTip(_tooltip);
                             }
                             break;
+                        }
                         case wkbMultiPoint:
+                        {
                             for (int _idx = 0; _idx < ((OGRMultiPoint *)_geom)->getNumGeometries(); _idx++)
                             {
                                 if (!_s.symbol->isEmpty())
@@ -642,7 +645,9 @@ struct S57_BuildScene::Data
                                 _s = apply_rule(_feat, _layer_name, _idx);
                             }
                             break;
+                        }
                         case wkbLineString:
+                        {
                             _l = ((OGRLineString *)_geom);
                             _l->StartPoint(&_p1);
                             _l->EndPoint(& _p2);
@@ -671,7 +676,9 @@ struct S57_BuildScene::Data
 								_item->setToolTip(_tooltip);
                             }
                             break;
+                        }
                         case wkbMultiLineString:
+                        {
                             for (int _idx = 0; _idx < ((OGRMultiLineString *)_geom)->getNumGeometries(); _idx++)
                             {
                                 _l = (OGRLineString *)((OGRMultiLineString *)_geom)->getGeometryRef(_idx);
@@ -704,7 +711,9 @@ struct S57_BuildScene::Data
                                 _s = apply_rule(_feat, _layer_name, _idx);
                             }
                             break;
+                        }
                         case wkbPolygon:
+                        {
                             _poly.clear();
                             _r = ((OGRPolygon *)_geom)->getExteriorRing();
                             _sum_x = 0; _sum_y = 0; _sum_count = 0;
@@ -738,7 +747,9 @@ struct S57_BuildScene::Data
 								_item->setToolTip(_tooltip);
                             }
                             break;
+                        }
                         case wkbMultiPolygon:
+                        {
                             _sum_x = 0; _sum_y = 0; _sum_count = 0;
 							_mpoly.clear();
 							_mpoly.resize(((OGRMultiPolygon *)_geom)->getNumGeometries());
@@ -794,6 +805,11 @@ struct S57_BuildScene::Data
                             _s = apply_rule(_feat, _layer_name/*, _idx*/);                           
                             break;
                         }
+                        default:
+                            continue;
+                            break;
+                        }
+                        _item->setData(S57_BuildScene::ItemLayerNameKey, _layer_name);
                     }
                 }
 				if (_feat != 0)

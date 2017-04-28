@@ -37,6 +37,8 @@ public:
     S52_Symbol & s52() const;
 
     double scaleTo1(double _scale = 1.0, double _dot_mm = 0.25, double _km_in_deg = 78.715);
+
+    enum ItemKeys {ItemLayerNameKey = 1};
 private:
 	struct Data;
 	Data * d;

@@ -981,7 +981,7 @@ void S57_DrawWindow::viewportMoved()
     ri->setPos(ct); // anchor center
     rpi->setPos(ct);
 
-    foreach (QGraphicsPolygonItem * ri_coast_item, ri_coasts)
+    foreach (QGraphicsLineItem * ri_coast_item, ri_coasts)
     {
         scene->removeItem(ri_coast_item);
         delete ri_coast_item;
@@ -989,18 +989,40 @@ void S57_DrawWindow::viewportMoved()
     ri_coasts.clear();
     QPainterPath p1;
     p1.addEllipse(ct, radius, radius);
+    QPen pen(Qt::green, 5);
+    pen.setCosmetic(true);
+    const double r2 = radius * radius;
     foreach (QGraphicsPolygonItem * coast_item, coasts)
     {
         QPainterPath p2;
         p2.addPolygon(coast_item->polygon());
-        if (p1.intersects(p2))
+        if (p1.intersects(p2))            
         {
-            QGraphicsPolygonItem * ri_coast_item = new QGraphicsPolygonItem(coast_item->polygon());
-            QPen pen(Qt::green, 5);
-            pen.setCosmetic(true);
-            ri_coast_item->setPen(pen);
-            scene->addItem(ri_coast_item);
-            ri_coasts << ri_coast_item;
+            //            QGraphicsPolygonItem * ri_coast_item = new QGraphicsPolygonItem(coast_item->polygon());
+            const QPolygonF & poly = coast_item->polygon();
+            QPointF prev_pt;
+            float prev_dist_2;
+            for (int i = 0; i < poly.count() - 1; i++)
+            {
+                const QPointF & pt = poly[i];
+                const float dist_2 = (pt.x() - ct.x()) * (pt.x() - ct.x()) + (pt.y() - ct.y()) * (pt.y() - ct.y());
+                if (dist_2 < 1.5 * r2)
+                {
+                    if (!prev_pt.isNull())
+                    {
+                        if (dist_2 < r2 && prev_dist_2 < r2)
+                        {
+                            QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
+                            ri_coast_item->setPen(pen);
+                            scene->addItem(ri_coast_item);
+                            ri_coasts << ri_coast_item;
+
+                        }
+                    }
+                    prev_pt = pt;
+                    prev_dist_2 = dist_2;
+                }
+            }
         }
     }
 }

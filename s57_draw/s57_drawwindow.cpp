@@ -998,30 +998,29 @@ void S57_DrawWindow::viewportMoved()
         p2.addPolygon(coast_item->polygon());
         if (p1.intersects(p2))            
         {
-            //            QGraphicsPolygonItem * ri_coast_item = new QGraphicsPolygonItem(coast_item->polygon());
             const QPolygonF & poly = coast_item->polygon();
-            QPointF prev_pt;
-            float prev_dist_2;
-            for (int i = 0; i < poly.count() - 1; i++)
+            QPointF prev_pt = poly[0];
+            int prev_index = 0;
+            for (int i = 1; i < poly.count(); i++)
             {
                 const QPointF & pt = poly[i];
+                const QPointF mid_pt((pt.x() + prev_pt.x()) / 2, (pt.y() + prev_pt.y()) / 2);
+                const float dist_1 = (mid_pt.x() - ct.x()) * (mid_pt.x() - ct.x()) + (mid_pt.y() - ct.y()) * (mid_pt.y() - ct.y());
                 const float dist_2 = (pt.x() - ct.x()) * (pt.x() - ct.x()) + (pt.y() - ct.y()) * (pt.y() - ct.y());
-                if (dist_2 < 1.5 * r2)
+                const float dist_3 = (prev_pt.x() - ct.x()) * (prev_pt.x() - ct.x()) + (prev_pt.y() - ct.y()) * (prev_pt.y() - ct.y());
+                if (dist_1 < r2 || dist_2 < r2 || dist_3 < r2)
                 {
-                    if (!prev_pt.isNull())
+                    if (i - prev_index == 1)
                     {
-                        if (dist_2 < r2 && prev_dist_2 < r2)
-                        {
-                            QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
-                            ri_coast_item->setPen(pen);
-                            scene->addItem(ri_coast_item);
-                            ri_coasts << ri_coast_item;
+                        QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
+                        ri_coast_item->setPen(pen);
+                        scene->addItem(ri_coast_item);
+                        ri_coasts << ri_coast_item;
 
-                        }
                     }
-                    prev_pt = pt;
-                    prev_dist_2 = dist_2;
                 }
+                prev_pt = pt;
+                prev_index = i;
             }
         }
     }

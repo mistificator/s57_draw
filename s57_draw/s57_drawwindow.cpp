@@ -195,6 +195,10 @@ public:
         matrix.rotate(-90);
         return sec_img.transformed(matrix);
     }
+    QLineF radius(int position_number)
+    {
+        return QLineF(QPointF(), map_src[block_size * position_number + block_size - 1]);
+    }
 private:
     int block_size, positions_count;
     QVector<QPointF> map_src;
@@ -946,6 +950,8 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         {
             v[i] = radar_emu[8192 * pos + i];
         }
+        /*
+        // test
         if (pos < 3072)
         {
             for (int i = 4111; i < 4211; i++)
@@ -960,6 +966,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
                 v[i] = 0xff;
             }
         }
+        */
         ri->addData(v, pos);
     }
     if (radar_sector->isVisible())
@@ -981,15 +988,18 @@ void S57_DrawWindow::viewportMoved()
     ri->setPos(ct); // anchor center
     rpi->setPos(ct);
 
-    foreach (QGraphicsLineItem * ri_coast_item, ri_coasts)
+    foreach (double dist, ri_coasts.keys())
     {
-        scene->removeItem(ri_coast_item);
-        delete ri_coast_item;
+        foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+        {
+            scene->removeItem(ri_coast_item);
+            delete ri_coast_item;
+        }
     }
     ri_coasts.clear();
     QPainterPath p1;
     p1.addEllipse(ct, radius, radius);
-    QPen pen(Qt::green, 5);
+    QPen pen(Qt::yellow, 5);
     pen.setCosmetic(true);
     const double r2 = radius * radius;
     foreach (QGraphicsPolygonItem * coast_item, coasts)
@@ -1015,12 +1025,46 @@ void S57_DrawWindow::viewportMoved()
                         QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
                         ri_coast_item->setPen(pen);
                         scene->addItem(ri_coast_item);
-                        ri_coasts << ri_coast_item;
-
+                        ri_coasts[dist_1] << ri_coast_item;
                     }
                 }
                 prev_pt = pt;
                 prev_index = i;
+            }
+        }
+    }
+    foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
+    {
+        scene->removeItem(ri_visible_coast_item);
+        delete ri_visible_coast_item;
+    }
+    ri_visible_coasts.clear();
+
+    pen.setColor(Qt::green);
+    pen.setWidth(5);
+    for (int t = 0; t < 4096; t++)
+    {
+        QLineF & line = ri->radius(t).translated(ct);
+        bool stop = false;
+        foreach (double dist, ri_coasts.keys())
+        {
+            foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+            {
+                QPointF pt;
+                if (line.intersect(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
+                {
+                    QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(ri_coast_item->line());
+                    ri_visible_coast_item->setPen(pen);
+                    ri_visible_coast_item->setZValue(1000000);
+                    scene->addItem(ri_visible_coast_item);
+                    ri_visible_coasts << ri_visible_coast_item;
+                    stop = true;
+                    break;
+                }
+            }
+            if (stop)
+            {
+                break;
             }
         }
     }

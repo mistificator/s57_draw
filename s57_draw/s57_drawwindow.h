@@ -78,7 +78,8 @@ private:
     QLabel * radar_sector;
     QRectF roi_rect;
     QList<QGraphicsPolygonItem *> coasts;
-    QList<QGraphicsLineItem *> ri_coasts;
+    QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
+    QList<QGraphicsLineItem *> ri_visible_coasts;
 
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);

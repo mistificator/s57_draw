@@ -77,9 +77,12 @@ private:
     QVector<short> radar_emu;
     QLabel * radar_sector;
     QRectF roi_rect;
+    QPointF roi_point;
     QList<QGraphicsPolygonItem *> coasts;
     QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
     QList<QGraphicsLineItem *> ri_visible_coasts;
+    QList<QLineF> ri_sec_lines;
+    void updateRoi(QPointF);
 
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);

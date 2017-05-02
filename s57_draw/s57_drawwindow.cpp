@@ -218,7 +218,7 @@ private:
             const double angle = t * angle_step;
             for (int v = 0; v < block_size; v++)
             {
-                map_src[block_size * t + v] = QPointF(v * ::cosf(angle - M_PI / 2), v * ::sinf(angle - M_PI / 2));
+                map_src[block_size * t + v] = QPointF(v * ::cosf(angle - M_PI / 2 + angle_step), v * ::sinf(angle - M_PI / 2 + angle_step));
             }
         }
     }
@@ -273,7 +273,7 @@ private:
         {
             dst.fill(0);
         }
-        ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src[0]));
+        ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src.data()[0]));
         const int * offset_ptr = map_dst.constData() + block_size * position;
         const short * block_ptr = block.constData();
         short * dst_ptr = dst.data();
@@ -368,6 +368,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     radar_sector->setVisible(false);
     radar_sector->setWindowTitle(QObject::tr("Radar sector"));
     radar_sector->resize(400, 400);
+    radar_sector->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
 
     ri = new RadarItem();
     ri->setZValue(1000000);
@@ -387,7 +388,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     radar_emu.resize(8192 * 4096);
     for (int i = 0; i < 8192 * 4096; i++)
     {
-        radar_emu[i] = qrand();
+        radar_emu[i] = (qrand() & 0x7f);
     }
 
     connect(ui->S57View->horizontalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(viewportMoved()));
@@ -586,6 +587,47 @@ void S57_DrawWindow::on_actionQuit_triggered()
     close();
 }
 
+void S57_DrawWindow::updateRoi(QPointF _pt)
+{
+    QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
+    QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
+    QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
+
+    const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
+
+    double angle = ::atan2(_pt.y() - ct.y(), _pt.x() - ct.x());
+    double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) + 1e-15);
+
+    if (length < 0.1 * radius)
+    {
+        length = 0.1 * radius;
+    }
+    if (length > 0.9 * radius)
+    {
+        length = 0.9 * radius;
+    }
+
+    const double l1 = length - 0.1 * radius;
+    const double l2 = length + 0.1 * radius;
+    const double a1 = angle - 0.1;
+    const double a2 = angle + 0.1;
+    QPolygonF rpi_poly;
+    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+    rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
+    rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
+    rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
+//    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+
+    rpi->setPolygon(rpi_poly);
+
+    rpi->setPos(ct);
+
+    roi_rect.setLeft(a1 + M_PI / 2);
+    roi_rect.setTop(a2 + M_PI / 2);
+    roi_rect.setBottom(l1 * 8192 / radius);
+    roi_rect.setRight(l2 * 8192 / radius);
+}
+
 bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
 {
     if (_obj == scene)
@@ -604,43 +646,7 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
 
             if (radar_sector->isVisible() && (_me->buttons() & Qt::LeftButton) == Qt::LeftButton)
             {
-                QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
-                QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
-                QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
-
-                const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
-
-                double angle = ::atan2(_pt.y() - ct.y(), _pt.x() - ct.x());
-                double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) + 1e-15);
-
-                if (length < 0.1 * radius)
-                {
-                    length = 0.1 * radius;
-                }
-                if (length > 0.9 * radius)
-                {
-                    length = 0.9 * radius;
-                }
-
-                const double l1 = length - 0.1 * radius;
-                const double l2 = length + 0.1 * radius;
-                const double a1 = angle - 0.1;
-                const double a2 = angle + 0.1;
-                QPolygonF rpi_poly;
-                rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-                rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
-                rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
-                rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
-                rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-
-                rpi->setPolygon(rpi_poly);
-
-                rpi->setPos(ct);
-
-                roi_rect.setLeft(a1 + M_PI / 2);
-                roi_rect.setTop(a2 + M_PI / 2);
-                roi_rect.setBottom(l1 * 8192 / radius);
-                roi_rect.setRight(l2 * 8192 / radius);
+                updateRoi(roi_point = _pt);
             }
             break;
         }
@@ -968,16 +974,29 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
             }
         }
         */
+
+        foreach (QLineF line, ri_sec_lines)
+        {
+            QPointF pt;
+            if (line.intersect(QLineF(QPoint(1, pos), QPointF(8191, pos)), & pt) == QLineF::BoundedIntersection)
+            {
+                v[pt.x()] = 0xff;
+            }
+        }
+
         ri->addData(v, pos);
     }
     if (radar_sector->isVisible() && !roi_rect.isNull())
     {
-        radar_sector->setPixmap(QPixmap::fromImage(ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right()).scaled(radar_sector->size())));
+        const QImage & img = ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right()).scaled(radar_sector->size());
+        radar_sector->setPixmap(QPixmap::fromImage(img));
     }
 }
 
 void S57_DrawWindow::viewportMoved()
 {
+    updateRoi(roi_point);
+
     QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
     QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
     QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
@@ -1040,6 +1059,7 @@ void S57_DrawWindow::viewportMoved()
         delete ri_visible_coast_item;
     }
     ri_visible_coasts.clear();
+    ri_sec_lines.clear();
 
     pen.setColor(Qt::green);
     pen.setWidth(5);
@@ -1065,21 +1085,44 @@ void S57_DrawWindow::viewportMoved()
                     ri_visible_coasts << ri_visible_coast_item;
 
                     const QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
-                    const double angle1 = test_line1.angle();
-                    const double angle2 = test_line2.angle();
-                    double angle = angle1 > angle2 ? angle2 : angle1;
-                    angle = 90.0 - angle;
-                    if (angle < 0)
+                    double angle1 = 90.0 - test_line1.angle();
+                    double angle2 = 90.0 - test_line2.angle();
+                    if (angle1 < 0)
                     {
-                        angle += 360.0;
+                        angle1 += 360.0;
                     }
-                    angle = angle * 4096.0 / 360.0;
+                    angle1 = angle1 * 4096.0 / 360.0;
+                    if (angle2 < 0)
+                    {
+                        angle2 += 360.0;
+                    }
+                    angle2 = angle2 * 4096.0 / 360.0;
+                    double angle = test_line1.angle() > test_line2.angle() ? angle2 : angle1;
 //                    qDebug() << t << angle;
                     if (t < angle - t_step + 1)
                     {
                         t = angle - t_step + 1;
                     }
                     stop = true;
+
+                    const float len_1 = test_line1.length() * 8192.0 / radius;
+                    const float len_2 = test_line2.length() * 8192.0 / radius;
+
+                    if (angle1 > angle2 && angle1 - angle2 > 4096.0 / 2)
+                    {
+                        ri_sec_lines << QLineF(len_1, angle1, len_2, angle2 + 4096.0);
+                        ri_sec_lines << QLineF(len_1, angle1 - 4096.0, len_2, angle2);
+                    }
+                    else
+                    if (angle2 > angle1 && angle2 - angle1 > 4096.0 / 2)
+                    {
+                        ri_sec_lines << QLineF(len_2, angle2, len_1, angle1 + 4096.0);
+                        ri_sec_lines << QLineF(len_2, angle2 - 4096.0, len_1, angle1);
+                    }
+                    else
+                    {
+                        ri_sec_lines << QLineF(len_1, angle1, len_2, angle2);
+                    }
                     break;
                 }
             }

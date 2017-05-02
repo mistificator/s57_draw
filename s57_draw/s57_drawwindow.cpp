@@ -504,7 +504,6 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 
     scene->addItem(ri);
     scene->addItem(rpi);
-    viewportMoved();
 
     foreach(QGraphicsItem * item, scene->items())
     {
@@ -516,6 +515,7 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
             }
         }
     }
+    viewportMoved();
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -663,6 +663,7 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                 ui->S57View->scale(_k, _k);
                 //                qDebug() << currentScale();
                 updateVisibility();
+                viewportMoved();
             }
             ui->S57View->setUpdatesEnabled(true);
             return (true);
@@ -969,7 +970,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         */
         ri->addData(v, pos);
     }
-    if (radar_sector->isVisible())
+    if (radar_sector->isVisible() && !roi_rect.isNull())
     {
         radar_sector->setPixmap(QPixmap::fromImage(ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right()).scaled(radar_sector->size())));
     }
@@ -1042,9 +1043,12 @@ void S57_DrawWindow::viewportMoved()
 
     pen.setColor(Qt::green);
     pen.setWidth(5);
-    for (int t = 0; t < 4096; t++)
+
+//    const int t_step = 1; // raycasting granularity (1 - max resolution)
+    const int t_step = qMax(1, 1 << (int)(0.5 * ::log10f(builder.scaleTo1())));
+    for (int t = 0; t < 4096; t+=t_step)
     {
-        QLineF & line = ri->radius(t).translated(ct);
+        const QLineF & line = ri->radius(t).translated(ct);
         bool stop = false;
         foreach (double dist, ri_coasts.keys())
         {
@@ -1053,11 +1057,28 @@ void S57_DrawWindow::viewportMoved()
                 QPointF pt;
                 if (line.intersect(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
                 {
-                    QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(ri_coast_item->line());
+                    const QLineF & coast_line = ri_coast_item->line();
+                    QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(coast_line);
                     ri_visible_coast_item->setPen(pen);
                     ri_visible_coast_item->setZValue(1000000);
                     scene->addItem(ri_visible_coast_item);
                     ri_visible_coasts << ri_visible_coast_item;
+
+                    const QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
+                    const double angle1 = test_line1.angle();
+                    const double angle2 = test_line2.angle();
+                    double angle = angle1 > angle2 ? angle2 : angle1;
+                    angle = 90.0 - angle;
+                    if (angle < 0)
+                    {
+                        angle += 360.0;
+                    }
+                    angle = angle * 4096.0 / 360.0;
+//                    qDebug() << t << angle;
+                    if (t < angle - t_step + 1)
+                    {
+                        t = angle - t_step + 1;
+                    }
                     stop = true;
                     break;
                 }

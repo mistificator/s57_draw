@@ -941,6 +941,18 @@ void S57_DrawWindow::resizeEvent(QResizeEvent *)
     viewportMoved();
 }
 
+float polarLinePoint(const QLineF & line, float t)
+{
+    t = t * 2 * M_PI / 4096;
+    const float t0 = line.p1().y() * 2 * M_PI / 4096, t1 = line.p2().y() * 2 * M_PI / 4096;
+    const float r0 = line.p1().x(), r1 = line.p2().x();
+
+    const float q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
+    const float r = r0 * (::sin(t0) - q * ::cos(t0)) / (::sin(t) - q * ::cos(t));
+
+    return r;
+}
+
 void S57_DrawWindow::timerEvent(QTimerEvent *)
 {
     static int pos = -1;
@@ -980,7 +992,11 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
             QPointF pt;
             if (line.intersect(QLineF(QPoint(1, pos), QPointF(8191, pos)), & pt) == QLineF::BoundedIntersection)
             {
-                v[pt.x()] = 0xff;
+//                v[pt.x()] = 0xff;
+                for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f)
+                {
+                    v[qMin(8191.0f, qMax(0.0f, polarLinePoint(line, pos + sub_pos)))] = 0xff;
+                }
             }
         }
 

@@ -14,289 +14,12 @@
 #include "cpl_port.h"
 #include "s52_symbol.h"
 
-class QFixedPixmapItemEx: public QGraphicsItem
-{
-public:
-    QFixedPixmapItemEx(QGraphicsItem *parent = 0): QGraphicsItem(parent), pixmap_ptr(0), image_ptr(0), src_type(Pixmap)
-    {
-        setScreenSize(QSize(10, 10));
-    }
-    virtual void setScreenSize(const QSize & _size)
-    {
-        screen_size = _size;
-    }
-    QSize screenSize() const
-    {
-        return screen_size;
-    }
-    void setPixmap(const QPixmap & _pixmap)
-    {
-        pixmap = _pixmap;
-        src_type = Pixmap;
-    }
-    void setPixmap(const QPixmap * _pixmap)
-    {
-        pixmap_ptr = (QPixmap *)_pixmap;
-        src_type = Pixmap_Ptr;
-    }
-    void setImage(const QImage & _image)
-    {
-        image = _image;
-        src_type = Image;
-    }
-    void setImage(const QImage * _image)
-    {
-        image_ptr = (QImage *)_image;
-        src_type = Image_Ptr;
-    }
-    QRectF boundingRect() const
-    {
-        QRectF _r;
-        if (scene() && (!scene()->views().isEmpty()))
-        {
-            if (QGraphicsView * _view = scene()->views().front())
-            {
-                QPoint _pt = _view->mapFromScene(scenePos());
-                _r = mapFromScene(_view->mapToScene(QRect(QPoint(_pt.x() - screen_size.width() / 2, _pt.y() - screen_size.height() / 2), screen_size))).boundingRect();
-                if (_r.size() == screen_size)
-                {
-                    return (QRectF());
-                }
-            }
-        }
-        return (_r);
-    }
-    void paint(QPainter * _painter, const QStyleOptionGraphicsItem * /*_option*/, QWidget * /*_widget*/)
-    {
-        switch (src_type)
-        {
-        case Pixmap:
-            if (!pixmap.isNull())
-            {
-                _painter->drawPixmap(boundingRect(), pixmap, pixmap.rect());
-            }
-            break;
-        case Pixmap_Ptr:
-            if (pixmap_ptr && !pixmap_ptr->isNull())
-            {
-                _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
-            }
-            break;
-        case Image:
-            if (!image.isNull())
-            {
-                _painter->drawImage(boundingRect(), image, image.rect());
-            }
-            break;
-        case Image_Ptr:
-            if (image_ptr && !image_ptr->isNull())
-            {
-                _painter->drawImage(boundingRect(), * image_ptr, image_ptr->rect());
-            }
-            break;
-        }
-    }
 
-private:
-    QSize screen_size;
-    QPixmap pixmap;
-    QPixmap * pixmap_ptr;
-    QImage image;
-    QImage * image_ptr;
-    enum {Pixmap = 0, Pixmap_Ptr, Image, Image_Ptr};
-    int src_type;
-};
-
-class RadarItem: public QFixedPixmapItemEx
-{
-public:
-    RadarItem(QGraphicsItem *parent = 0): QFixedPixmapItemEx(parent)
-    {
-        setMetrics(8192, 4096);
-    }
-    ~RadarItem() {}
-    void setMetrics(int _portion_size, int _positions_count)
-    {
-        block_size = _portion_size;
-        positions_count = _positions_count;
-
-        reset();
-    }
-    void reset()
-    {
-        createSrcMap();
-        createDstMap();
-    }
-    void adjustSize()
-    {
-        createDstMap();
-    }
-    void addData(const QVector<short> & block, int position)
-    {
-        _addData(block, position);
-    }
-    void setScreenSize(const QSize & _size)
-    {
-        QFixedPixmapItemEx::setScreenSize(_size);
-        adjustSize();
-    }
-    QImage roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const // angles in radians, 0 <= angle <= 2 * M_PI
-    {
-        if (start_distance < 0 || stop_distance > block_size || start_distance > stop_distance)
-        {
-            return QImage();
-        }
-        while (start_angle < 0)
-        {
-            start_angle += 2 * M_PI;
-        }
-        while (stop_angle < 0)
-        {
-            stop_angle += 2 * M_PI;
-        }
-        while (start_angle >= 2 * M_PI)
-        {
-            start_angle -= 2 * M_PI;
-        }
-        while (stop_angle >= 2 * M_PI)
-        {
-            stop_angle -= 2 * M_PI;
-        }
-        const double angle_step = 2.0 * M_PI / positions_count;
-        const int _start_angle = start_angle / angle_step;
-        const int _stop_angle1 = start_angle < stop_angle ? stop_angle / angle_step : 2 * M_PI / angle_step;
-        const int _stop_angle2 = start_angle < stop_angle ? 0 : stop_angle / angle_step;
-
-        QSize sz(stop_distance - start_distance, start_angle < stop_angle ? _stop_angle1 - _start_angle : positions_count - _start_angle + _stop_angle2);
-        if (sec_img.size() != sz)
-        {
-            sec_img = QImage(sz, QImage::Format_RGB32);
-        }
-        unsigned int * img_ptr = (unsigned int *)sec_img.bits();
-        for (int t = _start_angle; t < _stop_angle1; t++)
-        {
-            const short * _src = src.constData() + t * block_size + start_distance;
-            for (int v = start_distance; v < stop_distance; v++)
-            {
-                * img_ptr++ = colorConvert(* _src++);
-            }
-        }
-        for (int t = 0; t < _stop_angle2; t++)
-        {
-            const short * _src = src.constData() + t * block_size + start_distance;
-            for (int v = start_distance; v < stop_distance; v++)
-            {
-                * img_ptr++ = colorConvert(* _src++);
-            }
-        }
-        QPoint center = sec_img.rect().center();
-        QMatrix matrix;
-        matrix.translate(center.x(), center.y());
-        matrix.rotate(-90);
-        return sec_img.transformed(matrix);
-    }
-    QLineF radius(int position_number)
-    {
-        return QLineF(QPointF(), map_src[block_size * position_number + block_size - 1]);
-    }
-private:
-    int block_size, positions_count;
-    QVector<QPointF> map_src;
-    QVector<int> map_dst;
-    QVector<short> src, dst;
-    QImage img;
-    mutable QImage sec_img;
-    void createSrcMap()
-    {
-        map_src.resize(block_size * positions_count);
-        map_src.fill(QPointF(0, 0));
-        src.resize(block_size * positions_count);
-        src.fill(0);
-        const double angle_step = 2.0 * M_PI / positions_count;
-        for (int t = 0; t < positions_count; t++)
-        {
-            const double angle = t * angle_step;
-            for (int v = 0; v < block_size; v++)
-            {
-                map_src[block_size * t + v] = QPointF(v * ::cosf(angle - M_PI / 2 + angle_step), v * ::sinf(angle - M_PI / 2 + angle_step));
-            }
-        }
-    }
-    void createDstMap()
-    {
-        if (map_src.size() < block_size * positions_count)
-        {
-            return;
-        }
-        const int w = screenSize().width();
-        const int h = screenSize().height();
-        if (dst.size() == w * h)
-        {
-            return;
-        }
-        dst.resize(w * h);
-        dst.fill(0);
-
-        img = QImage(w, h, QImage::Format_ARGB32);
-        img.fill(QColor(0, 0, 0, 0));
-        setImage(& img);
-
-        map_dst.resize(block_size * positions_count);
-        map_dst.fill(0);
-
-        const double xw = (1.0 * w) / (2 * block_size);
-        const double yh = (1.0 * h) / (2 * block_size);
-
-        for (int t = 0; t < positions_count; t++)
-        {
-            for (int v = 0; v < block_size; v++)
-            {
-                const int idx = block_size * t + v;
-                const QPointF & _map_src = map_src[idx];
-                const int x = _map_src.x() * xw + (w / 2);
-                const int y = _map_src.y() * yh + (h / 2);
-                map_dst[idx] = (int)y * w + (int)x;
-            }
-        }
-    }
-    void _addData(const QVector<short> & block, int position)
-    {
-        if (map_dst.size() < block_size * positions_count)
-        {
-            return;
-        }
-        if (position >= positions_count)
-        {
-            return;
-        }
-        if (position == 0)
-        {
-            dst.fill(0);
-        }
-        ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src.data()[0]));
-        const int * offset_ptr = map_dst.constData() + block_size * position;
-        const short * block_ptr = block.constData();
-        short * dst_ptr = dst.data();
-        unsigned int * img_ptr = (unsigned int *)img.bits();
-        for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
-        {
-            short & _dst = dst_ptr[* offset_ptr];
-            if (_dst < * block_ptr)
-            {
-                _dst = * block_ptr;
-            }
-            img_ptr[* offset_ptr] = colorConvert(_dst);
-        }
-    }
-    static QRgb colorConvert(short data)
-    {
-        return qRgba(0, 0xff & data, 0, data > 0 ? 255 : 0);
-    }
-};
+// -------------------------------------------------------------------------
 
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11), ri(0)
+    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11)
 {
     ui->setupUi(this);
     ui->statusbar->addPermanentWidget(position_label = new QLabel(), 1);
@@ -355,10 +78,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         qDebug() << "No css file";
     } 
 
-    scene = new S57_ExtendedScene();
+    scene = new S57_ExtendedGraphicsScene();
     scene->setAspect(aspect);
-    scene->setRulerEnabled(true);
-//    scene->setGridEnabled(false);
     scene->installEventFilter(this);
     ui->S57View->setScene(scene);
     builder.setScene(scene);
@@ -370,31 +91,15 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     radar_sector->resize(400, 400);
     radar_sector->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
 
-    ri = new RadarItem();
-    ri->setZValue(1000000);
-    scene->addItem(ri);
-
-    rpi = new QGraphicsPolygonItem();
-    QPen rpi_pen(Qt::red, 5);
-    rpi_pen.setCosmetic(true);
-    rpi->setPen(rpi_pen);
-    rpi->setZValue(ri->zValue() + 1);
-    scene->addItem(rpi);
-
     bool show_radar = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("radar", false).toBool();
     ui->actionRadar->setChecked(show_radar);
     on_actionRadar_triggered(show_radar);
 
-    radar_emu.resize(8192 * 4096);
-    for (int i = 0; i < 8192 * 4096; i++)
+    radar_emu.resize(radar.blockSize() * radar.positionsCount());
+    for (int i = 0; i < radar.blockSize() * radar.positionsCount(); i++)
     {
         radar_emu[i] = (qrand() & 0x7f);
     }
-
-    connect(ui->S57View->horizontalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(viewportMoved()));
-    connect(ui->S57View->verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(viewportMoved()));
-//    connect(ui->S57View->horizontalScrollBar(), SIGNAL(sliderMoved(int)), this, SLOT(viewportMoved()));
-//    connect(ui->S57View->verticalScrollBar(), SIGNAL(sliderMoved(int)), this, SLOT(viewportMoved()));
 
     timer_id = startTimer(0);
 }
@@ -449,9 +154,10 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         return;
     }
 
-    coasts.clear();
-    scene->removeItem(ri);
-    scene->removeItem(rpi);
+    if (ui->actionRadar->isChecked())
+    {
+        scene->removeMod(& radar);
+    }
 
     switch (mode)
     {
@@ -503,20 +209,12 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     progress = 0; count = 0;
     ui->S57View->setUpdatesEnabled(true);
 
-    scene->addItem(ri);
-    scene->addItem(rpi);
-
-    foreach(QGraphicsItem * item, scene->items())
+    if (ui->actionRadar->isChecked())
     {
-        if (item->data(S57_BuildScene::ItemLayerNameKey).toString().compare("LNDARE", Qt::CaseInsensitive) == 0)
-        {
-            if (QGraphicsPolygonItem * coast_item = dynamic_cast<QGraphicsPolygonItem *>(item))
-            {
-                coasts << coast_item;
-            }
-        }
+        scene->addMod(& radar);
     }
-    viewportMoved();
+
+    radar.viewportMoved();
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -587,47 +285,6 @@ void S57_DrawWindow::on_actionQuit_triggered()
     close();
 }
 
-void S57_DrawWindow::updateRoi(QPointF _pt)
-{
-    QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
-    QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
-    QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
-
-    const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
-
-    double angle = ::atan2(_pt.y() - ct.y(), _pt.x() - ct.x());
-    double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) + 1e-15);
-
-    if (length < 0.1 * radius)
-    {
-        length = 0.1 * radius;
-    }
-    if (length > 0.9 * radius)
-    {
-        length = 0.9 * radius;
-    }
-
-    const double l1 = length - 0.1 * radius;
-    const double l2 = length + 0.1 * radius;
-    const double a1 = angle - 0.1;
-    const double a2 = angle + 0.1;
-    QPolygonF rpi_poly;
-    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-    rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
-    rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
-    rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
-//    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-
-    rpi->setPolygon(rpi_poly);
-
-    rpi->setPos(ct);
-
-    roi_rect.setLeft(a1 + M_PI / 2);
-    roi_rect.setTop(a2 + M_PI / 2);
-    roi_rect.setBottom(l1 * 8192 / radius);
-    roi_rect.setRight(l2 * 8192 / radius);
-}
-
 bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
 {
     if (_obj == scene)
@@ -643,11 +300,6 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                     QString::number(_pt.x()) + (_pt.x() > 0 ? "E" : "W") + QString(", ") +
                     QString::number(-_pt.y()) + (_pt.y() > 0 ? "S" : "N") + QString(") ");
             position_label->setText(_info);
-
-            if (radar_sector->isVisible() && (_me->buttons() & Qt::LeftButton) == Qt::LeftButton)
-            {
-                updateRoi(roi_point = _pt);
-            }
             break;
         }
         case QEvent::GraphicsSceneWheel:
@@ -669,7 +321,7 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
                 ui->S57View->scale(_k, _k);
                 //                qDebug() << currentScale();
                 updateVisibility();
-                viewportMoved();
+                radar.viewportMoved();
             }
             ui->S57View->setUpdatesEnabled(true);
             return (true);
@@ -697,7 +349,7 @@ void S57_DrawWindow::updateVisibility()
         builder.updateVisibility(_scale);
     }
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
-    viewportMoved();
+    radar.viewportMoved();
 }
 
 void S57_DrawWindow::scaleTo1(double _scale)
@@ -933,24 +585,34 @@ void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 
 void S57_DrawWindow::showEvent(QShowEvent *)
 {
-    viewportMoved();
+    radar.viewportMoved();
 }
 
 void S57_DrawWindow::resizeEvent(QResizeEvent *)
 {
-    viewportMoved();
+    radar.viewportMoved();
 }
 
-float polarLinePoint(const QLineF & line, float t)
+void S57_DrawWindow::polarLinePointPrepare(const QLineF & line, float & q, float & r)
 {
-    t = t * 2 * M_PI / 4096;
-    const float t0 = line.p1().y() * 2 * M_PI / 4096, t1 = line.p2().y() * 2 * M_PI / 4096;
+    const float t0 = line.p1().y() * 2 * M_PI / radar.positionsCount(), t1 = line.p2().y() * 2 * M_PI / radar.positionsCount();
     const float r0 = line.p1().x(), r1 = line.p2().x();
 
-    const float q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
-    const float r = r0 * (::sin(t0) - q * ::cos(t0)) / (::sin(t) - q * ::cos(t));
+    q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
+    r = r0 * (::sin(t0) - q * ::cos(t0));
+}
 
-    return r;
+float S57_DrawWindow::polarLinePoint(float q, float r, float t)
+{
+    t = t * 2 * M_PI / radar.positionsCount();
+    return r / (::sin(t) - q * ::cos(t));
+}
+
+float S57_DrawWindow::polarLinePoint(const QLineF & line, float t)
+{
+    float q, r;
+    polarLinePointPrepare(line, q, r);
+    return polarLinePoint(q, r, t);
 }
 
 void S57_DrawWindow::timerEvent(QTimerEvent *)
@@ -959,202 +621,46 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
     for (int k = 0; k < 128; k++)
     {
         pos++;
-        if (pos >= 4096)
+        if (pos >= radar.positionsCount())
         {
             pos = 0;
         }
-        QVector<short> v(8192);
+        QVector<short> v(radar.blockSize());
         v.fill(0);
         for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
         {
-            v[i] = radar_emu[8192 * pos + i];
+            v[i] = radar_emu[radar.blockSize() * pos + i];
         }
-        /*
-        // test
-        if (pos < 3072)
-        {
-            for (int i = 4111; i < 4211; i++)
-            {
-                v[i] = 0xff;
-            }
-        }
-        else
-        {
-            for (int i = 7111; i < 7211; i++)
-            {
-                v[i] = 0xff;
-            }
-        }
-        */
-
-        foreach (QLineF line, ri_sec_lines)
+        foreach (QLineF line, radar.visibleCoastsLines())
         {
             QPointF pt;
             if (line.intersect(QLineF(QPoint(1, pos), QPointF(8191, pos)), & pt) == QLineF::BoundedIntersection)
             {
-//                v[pt.x()] = 0xff;
-                for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f)
+                float q, r;
+                polarLinePointPrepare(line, q, r);
+                for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f)
                 {
-                    v[qMin(8191.0f, qMax(0.0f, polarLinePoint(line, pos + sub_pos)))] = 0xff;
+                    v[qMin(8191.0f, qMax(0.0f, polarLinePoint(q, r, pos + sub_pos)))] = 0xff;
                 }
             }
         }
 
-        ri->addData(v, pos);
+        radar.addData(v, pos);
     }
-    if (radar_sector->isVisible() && !roi_rect.isNull())
+    if (radar_sector->isVisible())
     {
-        const QImage & img = ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right()).scaled(radar_sector->size());
-        radar_sector->setPixmap(QPixmap::fromImage(img));
+        const QImage & img = radar.roi();
+        if (!img.size().isNull())
+        {
+            radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
+        }
     }
+
+    ui->S57View->viewport()->update();
 }
-
-void S57_DrawWindow::viewportMoved()
-{
-    updateRoi(roi_point);
-
-    QPointF tl = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).topLeft());
-    QPointF br = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).bottomRight());
-    QPointF ct = ui->S57View->mapToScene(QRect(QPoint(), ui->S57View->viewport()->size()).center());
-
-    const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
-
-    const int sz = qMin(ui->S57View->viewport()->size().width(), ui->S57View->viewport()->size().height());
-    ri->setScreenSize(QSize(sz, sz));
-    ri->setPos(ct); // anchor center
-    rpi->setPos(ct);
-
-    foreach (double dist, ri_coasts.keys())
-    {
-        foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
-        {
-            scene->removeItem(ri_coast_item);
-            delete ri_coast_item;
-        }
-    }
-    ri_coasts.clear();
-    QPainterPath p1;
-    p1.addEllipse(ct, radius, radius);
-    QPen pen(Qt::yellow, 5);
-    pen.setCosmetic(true);
-    const double r2 = radius * radius;
-    foreach (QGraphicsPolygonItem * coast_item, coasts)
-    {
-        QPainterPath p2;
-        p2.addPolygon(coast_item->polygon());
-        if (p1.intersects(p2))            
-        {
-            const QPolygonF & poly = coast_item->polygon();
-            QPointF prev_pt = poly[0];
-            int prev_index = 0;
-            for (int i = 1; i < poly.count(); i++)
-            {
-                const QPointF & pt = poly[i];
-                const QPointF mid_pt((pt.x() + prev_pt.x()) / 2, (pt.y() + prev_pt.y()) / 2);
-                const float dist_1 = (mid_pt.x() - ct.x()) * (mid_pt.x() - ct.x()) + (mid_pt.y() - ct.y()) * (mid_pt.y() - ct.y());
-                const float dist_2 = (pt.x() - ct.x()) * (pt.x() - ct.x()) + (pt.y() - ct.y()) * (pt.y() - ct.y());
-                const float dist_3 = (prev_pt.x() - ct.x()) * (prev_pt.x() - ct.x()) + (prev_pt.y() - ct.y()) * (prev_pt.y() - ct.y());
-                if (dist_1 < r2 || dist_2 < r2 || dist_3 < r2)
-                {
-                    if (i - prev_index == 1)
-                    {
-                        QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
-                        ri_coast_item->setPen(pen);
-                        scene->addItem(ri_coast_item);
-                        ri_coasts[dist_1] << ri_coast_item;
-                    }
-                }
-                prev_pt = pt;
-                prev_index = i;
-            }
-        }
-    }
-    foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
-    {
-        scene->removeItem(ri_visible_coast_item);
-        delete ri_visible_coast_item;
-    }
-    ri_visible_coasts.clear();
-    ri_sec_lines.clear();
-
-    pen.setColor(Qt::green);
-    pen.setWidth(5);
-
-//    const int t_step = 1; // raycasting granularity (1 - max resolution)
-    const int t_step = qMax(1, 1 << (int)(0.5 * ::log10f(builder.scaleTo1())));
-    for (int t = 0; t < 4096; t+=t_step)
-    {
-        const QLineF & line = ri->radius(t).translated(ct);
-        bool stop = false;
-        foreach (double dist, ri_coasts.keys())
-        {
-            foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
-            {
-                QPointF pt;
-                if (line.intersect(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
-                {
-                    const QLineF & coast_line = ri_coast_item->line();
-                    QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(coast_line);
-                    ri_visible_coast_item->setPen(pen);
-                    ri_visible_coast_item->setZValue(1000000);
-                    scene->addItem(ri_visible_coast_item);
-                    ri_visible_coasts << ri_visible_coast_item;
-
-                    const QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
-                    double angle1 = 90.0 - test_line1.angle();
-                    double angle2 = 90.0 - test_line2.angle();
-                    if (angle1 < 0)
-                    {
-                        angle1 += 360.0;
-                    }
-                    angle1 = angle1 * 4096.0 / 360.0;
-                    if (angle2 < 0)
-                    {
-                        angle2 += 360.0;
-                    }
-                    angle2 = angle2 * 4096.0 / 360.0;
-                    double angle = test_line1.angle() > test_line2.angle() ? angle2 : angle1;
-//                    qDebug() << t << angle;
-                    if (t < angle - t_step + 1)
-                    {
-                        t = angle - t_step + 1;
-                    }
-                    stop = true;
-
-                    const float len_1 = test_line1.length() * 8192.0 / radius;
-                    const float len_2 = test_line2.length() * 8192.0 / radius;
-
-                    if (angle1 > angle2 && angle1 - angle2 > 4096.0 / 2)
-                    {
-                        ri_sec_lines << QLineF(len_1, angle1, len_2, angle2 + 4096.0);
-                        ri_sec_lines << QLineF(len_1, angle1 - 4096.0, len_2, angle2);
-                    }
-                    else
-                    if (angle2 > angle1 && angle2 - angle1 > 4096.0 / 2)
-                    {
-                        ri_sec_lines << QLineF(len_2, angle2, len_1, angle1 + 4096.0);
-                        ri_sec_lines << QLineF(len_2, angle2 - 4096.0, len_1, angle1);
-                    }
-                    else
-                    {
-                        ri_sec_lines << QLineF(len_1, angle1, len_2, angle2);
-                    }
-                    break;
-                }
-            }
-            if (stop)
-            {
-                break;
-            }
-        }
-    }
-}
-
 
 void S57_DrawWindow::on_actionRadar_triggered(bool checked)
 {
-    ri->setVisible(checked);
-    rpi->setVisible(checked);
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("radar", checked);
     if (checked)
     {
@@ -1162,12 +668,19 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         ui->actionMouse_dragging->setChecked(false);
         on_actionMouse_dragging_triggered(false);
         ui->actionMouse_dragging->setEnabled(false);
+        scene->removeMod(& ruler);
+        scene->removeMod(& grid);
+        scene->addMod(& radar);
     }
     else
     {
         radar_sector->hide();
         ui->actionMouse_dragging->setEnabled(true);
+        scene->addMod(& ruler);
+        scene->addMod(& grid);
+        scene->removeMod(& radar);
     }
+    radar.viewportMoved();
 }
 
 void S57_DrawWindow::closeEvent(QCloseEvent *)

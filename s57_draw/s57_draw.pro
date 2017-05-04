@@ -12,7 +12,7 @@ SOURCES  +=\
             s57_drawwindow.cpp
 
 HEADERS  += \
-            s57_buildscene.h \
+            s57_extendedscene.h \
             s57_drawwindow.h
 
 FORMS    += \
@@ -20,10 +20,12 @@ FORMS    += \
 
 win32:LIBS +=\
             ../s57_bin/lib_s57.lib \
+            ../s57_bin/lib_s57_ext.lib \
             ../s57_bin/lib_prti99.lib
 
 unix:LIBS +=\
             ../s57_bin/lib_s57.a \
+            ../s57_bin/lib_s57_ext.a \
             ../s57_bin/lib_prti99.a
 
 unix:QMAKE_LFLAGS += -ldl

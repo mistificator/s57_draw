@@ -6,13 +6,11 @@
 #include <QKeyEvent>
 #include <QProgressDialog>
 #include <QLabel>
-#include "s57_buildscene.h"
+#include "s57_extendedscene.h"
 
 namespace Ui {
 class S57_DrawWindow;
 }
-
-class RadarItem;
 
 class S57_DrawWindow : public QMainWindow
 {
@@ -23,8 +21,6 @@ public:
     ~S57_DrawWindow();
 
 private slots:   
-    void viewportMoved();
-
     void on_actionOpen_triggered();
     void on_actionQuit_triggered();
     void on_actionAdd_triggered();
@@ -53,11 +49,20 @@ private slots:
     void on_actionRadar_triggered(bool);
 private:
     Ui::S57_DrawWindow * ui;
-    S57_ExtendedScene * scene;
+    S57_ExtendedGraphicsScene * scene;
     QLabel * position_label, * scale_label;
     void keyPressEvent(QKeyEvent * _ke);
     bool eventFilter(QObject *, QEvent *);
-    S57_BuildScene builder;
+    S57_ExtendedBuildScene builder;
+    S57_RulerModificator ruler;
+    S57_GridModificator grid;
+    S57_RadarModificator radar;
+    QLabel * radar_sector;
+    int timer_id;
+    QVector<short> radar_emu;
+    void polarLinePointPrepare(const QLineF & line, float & q, float & r);
+    float polarLinePoint(float q, float r, float t);
+    float polarLinePoint(const QLineF & line, float t);
     QProgressDialog * progress;
     bool cancel;
     qint64 count;
@@ -70,19 +75,6 @@ private:
     void recreateScene();
     void scaleTo1(double _scale);
     double precisionAspect();
-
-    RadarItem * ri;
-    QGraphicsPolygonItem * rpi;
-    int timer_id;
-    QVector<short> radar_emu;
-    QLabel * radar_sector;
-    QRectF roi_rect;
-    QPointF roi_point;
-    QList<QGraphicsPolygonItem *> coasts;
-    QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
-    QList<QGraphicsLineItem *> ri_visible_coasts;
-    QList<QLineF> ri_sec_lines;
-    void updateRoi(QPointF);
 
     void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);

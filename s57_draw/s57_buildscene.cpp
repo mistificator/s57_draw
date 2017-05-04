@@ -168,6 +168,7 @@ struct S57_BuildScene::Data
     QMultiMap<QString, style_struct> p_style, l_style, a_style;
     QMap<qint64, QGraphicsItemGroup *> groups;
     QList<QGraphicsItem *> items;
+    QStringList layers;
     double scale;
     struct RegisterS57_Helper
     {
@@ -586,6 +587,10 @@ struct S57_BuildScene::Data
             OGRLayer * _layer = _ds->GetLayer(_idx);
             _layer->ResetReading();
             QString _layer_name = QString(_layer->GetLayerDefn()->GetName()).toUpper();
+            if (!layers.contains(_layer_name))
+            {
+                layers << _layer_name;
+            }
             qDebug() << _idx << _layer_name;
             bool _ignore_group = (_layer_name == "DEPARE") || (_layer_name == "LNDARE");
             QGraphicsItem * _item;
@@ -869,25 +874,28 @@ void S57_BuildScene::clear()
 {
     if (d->scene)
     {
-		foreach (QGraphicsItem * _item, d->scene->items()) d->scene->removeItem(_item);
-        d->scene->clear();
+//		foreach (QGraphicsItem * _item, d->scene->items()) d->scene->removeItem(_item);
+        foreach (QGraphicsItem * _item, d->items) d->scene->removeItem(_item);
+//        d->scene->clear();
         d->scene->setSceneRect(QRectF());
     }
     d->groups.clear();
     d->items.clear();
+    d->layers.clear();
 }
 
 void S57_BuildScene::setScene(QGraphicsScene * _scene)
 {
     d->scene = _scene;
-    if (S57_ExtendedScene * ext_scene = dynamic_cast<S57_ExtendedScene *>(_scene))
-    {
-        ext_scene->registerBuildScene(this);
-    }
     if (d->scene)
     {
         d->scene->setSceneRect(d->scene->itemsBoundingRect());
     }
+}
+
+QGraphicsScene * S57_BuildScene::scene() const
+{
+    return d->scene;
 }
 
 void S57_BuildScene::build(const QString & _file_name)
@@ -990,6 +998,21 @@ int S57_BuildScene::itemsCount() const
     return (_count);
 }
 
+QList<QGraphicsItem *> S57_BuildScene::items() const
+{
+    QList<QGraphicsItem *> _items;
+    foreach (QGraphicsItem * _item, d->items)
+    {
+        _items << _item->childItems();
+    }
+    return _items;
+}
+
+QStringList S57_BuildScene::layers() const
+{
+    return d->layers;
+}
+
 void S57_BuildScene::setScaleTo(S57_BuildScene * _other)
 {
     if (_other->d->scene && d->scene)
@@ -1019,254 +1042,3 @@ double S57_BuildScene::scaleTo1(double _scale, double _dot_mm, double _km_in_deg
 }
 
 
-// -----------------------------------------------------------------------------------------------
-
-struct S57_ExtendedScene::Data
-{
-    QGraphicsEllipseItem * circle[3];
-    S57_ExtendedScene * scene;
-    S57_BuildScene * builder;
-    double aspect;
-    bool ruler, in_ruler, grid;
-    Data(S57_ExtendedScene * _scene): scene(_scene), builder(0), aspect(1.0), ruler(false), in_ruler(false), grid(true)
-    {
-        circle[0] = 0;
-        circle[1] = 0;
-        circle[2] = 0;
-    }
-    ~Data()
-    {
-    }
-    QGraphicsView * p2v(QPainter * _painter)
-    {
-        if (_painter == 0)
-        {
-            return 0;
-        }
-
-        QWidget * viewport_widget = dynamic_cast<QWidget *>(_painter->device());
-        if (viewport_widget == 0)
-        {
-            return 0;
-        }
-
-        return dynamic_cast<QGraphicsView *>(viewport_widget->parent());
-    }
-    void event(QEvent * _ev)
-    {
-        if (!builder)
-        {
-            return;
-        }
-        switch (_ev->type())
-        {
-            case QEvent::GraphicsSceneMousePress:
-            {
-                QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-                if (_me->button() == Qt::RightButton && ruler)
-                {
-                    in_ruler = !in_ruler;
-                    if (in_ruler)
-                    {
-                        //circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)), Qt::NoPen, QColor(0, 255, 0, 40));
-                        circle[0] = scene->addEllipse(QRectF(_me->scenePos(), QSizeF(1e-9, 1e-9)),QPen( QColor(50, 15, 0, 250), 0) , Qt::NoBrush);
-
-                        circle[1] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, QColor(0, 255, 0, 80));
-                        circle[2] = scene->addEllipse(circle[0]->rect(), Qt::NoPen, Qt::red);
-                    }
-                    else
-                    {
-                        scene->removeItem(circle[0]);
-                        scene->removeItem(circle[1]);
-                        scene->removeItem(circle[2]);
-                    }
-                }
-                break;
-            }
-            case QEvent::GraphicsSceneMouseMove:
-            {
-                if (ruler && in_ruler)
-                {
-                    QGraphicsSceneMouseEvent * _me = (QGraphicsSceneMouseEvent *)_ev;
-                    const QPointF _pt = _me->scenePos();
-                    const QPointF _center = circle[0]->rect().center();
-                    const double _new_radius = ::sqrt(1e-9 + (_pt.x() - _center.x()) * (_pt.x() - _center.x()) + aspect * aspect * (_pt.y() - _center.y()) * (_pt.y() - _center.y()));
-                    circle[0]->setRect(_center.x() - _new_radius, _center.y() - _new_radius / aspect, 2 * _new_radius, 2 * _new_radius / aspect);
-                    circle[0]->setStartAngle(((::atan2(_pt.x() - _center.x(), aspect * (_pt.y() - _center.y())) - M_PI / 2) * 180 / M_PI + 2.5) * 16);
-                 //   circle[0]->setSpanAngle(355 * 16);
-                    circle[0]->setSpanAngle(359.9375 * 16);
-
-                    circle[1]->setRect(circle[0]->rect());
-                //    circle[1]->setStartAngle(circle[0]->startAngle() - 7.5 * 16);
-                    circle[1]->setStartAngle(circle[0]->startAngle() - 0.5 * 16);
-
-                    //circle[1]->setSpanAngle(10 * 16);
-                    circle[1]->setSpanAngle(1.0 * 16);
-
-                    const double _scale = builder->scaleTo1() / 200000000.0;
-                    circle[2]->setRect(_center.x() - _scale, _center.y() - _scale / aspect, _scale * 2, _scale * 2 / aspect);
-                }
-                break;
-            }
-            _ev->ignore();
-        }
-    }
-    void drawGrid(QPainter * _painter, const QRectF & _rect)
-    {
-        if (!grid)
-        {
-            return;
-        }
-        QGraphicsView * view = p2v(_painter);
-        if (view == 0)
-        {
-            return;
-        }
-
-        const double aspect = 1.0;
-
-        scene->invalidate(QRectF(), QGraphicsScene::ForegroundLayer);
-
-        _painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
-        _painter->setFont(QFont("Arial", 12));
-
-        const QPointF _scene_top_left = scene->sceneRect().topLeft();
-        const QPointF PtX1_vector((_rect.height()*0.015),(_rect.height()*0.025));
-        const QPointF PtX2_vector((_rect.height()*0.015),-(_rect.height()*0.015));
-
-        const QPointF PtY1_vector((_rect.height()*0.005),-(_rect.height()*0.015));
-        const QPointF PtY2_vector(-(_rect.height()*0.12),-(_rect.height()*0.015));
-
-        const int grid_count_hint = 5;
-        const float _grid_x_step = ( _rect.bottomRight().x()-_rect.topLeft().x())/float(grid_count_hint);
-        const float  _grid_y_step = ( _rect.bottomRight().y()-_rect.topLeft().y())/float(grid_count_hint);
-
-        float dx_origin = qAbs(_scene_top_left.x()-_rect.topLeft().x())/_grid_x_step;
-        dx_origin = (1.0 - dx_origin + int(dx_origin))*_grid_x_step+_rect.topLeft().x();
-        float dy_origin = qAbs(_scene_top_left.y()-_rect.topLeft().y())/_grid_y_step;
-        dy_origin = (1.0 - dy_origin + int(dy_origin))*_grid_y_step+_rect.topLeft().y();
-
-        QPointF PX1 = QPointF(dx_origin,_rect.topLeft().y());
-        QPointF PtX1 = PX1+PtX1_vector;
-        QPointF PY1 = QPointF(_rect.topLeft().x(),dy_origin);
-        QPointF PtY1 = PY1+PtY1_vector;
-
-        QPointF PX2 = QPointF(dx_origin,_rect.bottomRight().y());
-        QPointF PtX2 = PX2+PtX2_vector;
-        QPointF PY2 = QPointF(_rect.bottomRight().x(),dy_origin);
-        QPointF PtY2 = PY2+PtY2_vector;
-
-        const QPointF delta_X(_grid_x_step,0);
-        const QPointF delta_Y(0,_grid_y_step);
-
-        QString sX,sY;
-        for (int _i = 0; _i < grid_count_hint; _i++)
-        {
-            _painter->drawLine(PX1, PX2);
-            _painter->drawLine(PY1, PY2);
-
-            PX1+=delta_X;
-            PX2+=delta_X;
-            PY1+=delta_Y;
-            PY2+=delta_Y;
-        }
-        dy_origin /= aspect;
-
-        _painter->save();
-        _painter->resetTransform();
-
-        for (int _i=0; _i<grid_count_hint;_i++)
-        {
-            if(dx_origin >= 0)
-            {
-                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
-            }
-            else
-            {
-                sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
-
-            }
-
-            if(dy_origin >= 0)
-            {
-                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
-            }
-            else
-            {
-                sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
-
-            }
-
-            _painter->drawText(view->mapFromScene(PtX1),sX);
-            _painter->drawText(view->mapFromScene(PtX2),sX);
-            _painter->drawText(view->mapFromScene(PtY1),sY);
-
-            QPointF PtY2_adj = view->mapFromScene(PtY2);
-            PtY2_adj.setX(PtY2_adj.x() - QFontMetrics(_painter->font()).width(sY) / 2);
-            _painter->drawText(PtY2_adj,sY);
-
-            dx_origin +=_grid_x_step;
-            dy_origin +=_grid_y_step / aspect;
-
-            PtX1+=delta_X;
-            PtX2+=delta_X;
-            PtY1+=delta_Y;
-            PtY2+=delta_Y;
-
-        }
-        _painter->restore();
-    }
-};
-
-S57_ExtendedScene::S57_ExtendedScene(QObject * _parent): QGraphicsScene(_parent), d(new Data(this))
-{
-
-}
-
-S57_ExtendedScene::~S57_ExtendedScene()
-{
-    delete d;
-}
-
-void S57_ExtendedScene::setAspect(double aspect)
-{
-    d->aspect = aspect;
-}
-
-void S57_ExtendedScene::setRulerEnabled(bool state)
-{
-    d->ruler = state;
-}
-
-bool S57_ExtendedScene::isRulerEnabled() const
-{
-    return d->ruler;
-}
-
-void S57_ExtendedScene::setGridEnabled(bool state)
-{
-    d->grid = state;
-    invalidate();
-    update();
-}
-
-bool S57_ExtendedScene::isGridEnabled() const
-{
-    return d->grid;
-}
-
-void S57_ExtendedScene::drawForeground(QPainter * _painter, const QRectF & _rect)
-{
-    d->drawGrid(_painter, _rect);
-}
-
-bool S57_ExtendedScene::event(QEvent * _ev)
-{
-    d->event(_ev);
-    return QGraphicsScene::event(_ev);
-}
-
-void S57_ExtendedScene::registerBuildScene(S57_BuildScene * _builder)
-{
-    d->builder = _builder;
-}

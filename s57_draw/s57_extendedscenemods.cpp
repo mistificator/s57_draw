@@ -1,4 +1,5 @@
 #include "s57_extendedscene.h"
+#include "s57_extendedscenemods.h"
 #include <QWidget>
 #include <QPainter>
 #include <QGraphicsView>
@@ -12,19 +13,34 @@
 
 // -----------------------------------------------------------------------------------------------
 
-void S57_ExtendedGraphicsSceneModificator::registerBuildScene(S57_ExtendedBuildScene * _builder)
+S57_ExtendedGraphicsSceneModificator::S57_ExtendedGraphicsSceneModificator(): is_active(false)
+{
+
+}
+
+void S57_ExtendedGraphicsSceneModificator::setActive(bool state)
+{
+    is_active = state;
+}
+
+bool S57_ExtendedGraphicsSceneModificator::isActive() const
+{
+    return is_active;
+}
+
+void S57_ExtendedGraphicsSceneModificator::registerBuildScene(S57_BuildScene * _builder)
 {
     builder_ptr = _builder;
 }
 
-S57_ExtendedBuildScene * S57_ExtendedGraphicsSceneModificator::builder() const
+S57_BuildScene * S57_ExtendedGraphicsSceneModificator::builder() const
 {
     return builder_ptr;
 }
 
 S57_ExtendedGraphicsScene * S57_ExtendedGraphicsSceneModificator::scene() const
 {
-    return dynamic_cast<S57_ExtendedGraphicsScene *>(builder_ptr->scene());
+    return builder_ptr ? dynamic_cast<S57_ExtendedGraphicsScene *>(builder_ptr->scene()) : 0;
 }
 
 QGraphicsView * S57_ExtendedGraphicsSceneModificator::view(QPainter * _painter)
@@ -34,12 +50,14 @@ QGraphicsView * S57_ExtendedGraphicsSceneModificator::view(QPainter * _painter)
 
 QGraphicsView * S57_ExtendedGraphicsSceneModificator::view()
 {
-    return scene()->views().at(0);
+    return scene() ? (scene()->views().isEmpty() ? 0 : scene()->views().at(0)) : 0;
 }
 
 S57_ExtendedGraphicsSceneModificator::~S57_ExtendedGraphicsSceneModificator() {}
 
 void S57_ExtendedGraphicsSceneModificator::onDrawForeground(QPainter *, const QRectF &) {}
+
+void S57_ExtendedGraphicsSceneModificator::onDrawBackground(QPainter *, const QRectF &) {}
 
 bool S57_ExtendedGraphicsSceneModificator::onEvent(QEvent *) { return false; }
 
@@ -539,7 +557,7 @@ QMap<double, QList<QGraphicsLineItem *> > S57_RadarModificator::coasts() const
     return ri_coasts;
 }
 
-QList<QGraphicsLineItem *> S57_RadarModificator::visibleCoasts() const
+QList<QGraphicsLineItem *> S57_RadarModificator::raycastCoasts() const
 {
     return ri_visible_coasts;
 }
@@ -551,6 +569,9 @@ QList<QLineF> S57_RadarModificator::visibleCoastsLines() const
 
 void S57_RadarModificator::onAddMod()
 {
+    view()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+
     scene()->addItem(ri);
     scene()->addItem(rpi);
 
@@ -559,32 +580,23 @@ void S57_RadarModificator::onAddMod()
 
     all_coasts = builder()->items<QGraphicsPolygonItem>("LNDARE");
 
-    connect(view()->horizontalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()), Qt::UniqueConnection);
-    connect(view()->verticalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()), Qt::UniqueConnection);
+    connect(view()->horizontalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()), Qt::DirectConnection);
+    connect(view()->verticalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()), Qt::DirectConnection);
+    connect(scene(), SIGNAL(scaleChanged()), dynamic_cast<QObject *>(this), SLOT(viewportMoved()), Qt::DirectConnection);
 
+    viewportMoved();
+
+    view()->installEventFilter(this);
 }
 
 void S57_RadarModificator::onRemoveMod()
 {
+    view()->removeEventFilter(this);
+
     disconnect(view()->horizontalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()));
     disconnect(view()->verticalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()));
+    disconnect(scene(), SIGNAL(scaleChanged()), dynamic_cast<QObject *>(this), SLOT(viewportMoved()));
 
-    ri->setVisible(false);
-    rpi->setVisible(false);
-
-    scene()->removeItem(ri);
-    scene()->removeItem(rpi);
-
-    all_coasts.clear();
-}
-
-void S57_RadarModificator::addData(const QVector<short> & block, int position)
-{
-    ri->addData(block, position);
-}
-
-void S57_RadarModificator::viewportMoved()
-{
     foreach (double dist, ri_coasts.keys())
     {
         foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
@@ -603,12 +615,48 @@ void S57_RadarModificator::viewportMoved()
     ri_visible_coasts.clear();
     ri_sec_lines.clear();
 
-    if (!ri->isVisible())
+    ri->setVisible(false);
+    rpi->setVisible(false);
+
+    scene()->removeItem(ri);
+    scene()->removeItem(rpi);
+
+    all_coasts.clear();
+}
+
+void S57_RadarModificator::addData(const QVector<short> & block, int position)
+{
+    ri->addData(block, position);
+}
+
+void S57_RadarModificator::viewportMoved()
+{
+    if (!isActive())
     {
         return;
     }
 
+    foreach (double dist, ri_coasts.keys())
+    {
+        foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+        {
+            scene()->removeItem(ri_coast_item);
+            delete ri_coast_item;
+        }
+    }
+    ri_coasts.clear();
+
+    foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
+    {
+        scene()->removeItem(ri_visible_coast_item);
+        delete ri_visible_coast_item;
+    }
+    ri_visible_coasts.clear();
+    ri_sec_lines.clear();
+
     updateRoi(roi_point);
+
+    const double aspect = scene()->aspect();
 
     QPointF tl = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).topLeft());
     QPointF br = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).bottomRight());
@@ -622,10 +670,10 @@ void S57_RadarModificator::viewportMoved()
     rpi->setPos(ct);
 
     QPainterPath p1;
-    p1.addEllipse(ct, radius, radius);
+    p1.addEllipse(ct, radius * aspect, radius);
     QPen pen(Qt::yellow, 5);
     pen.setCosmetic(true);
-    const double r2 = radius * radius;
+    const double r2 = radius * radius * aspect * aspect;
     foreach (QGraphicsPolygonItem * coast_item, all_coasts)
     {
         QPainterPath p2;
@@ -665,7 +713,9 @@ void S57_RadarModificator::viewportMoved()
     const int t_step = qMax(1, 1 << (int)(0.5 * ::log10f(builder()->scaleTo1())));
     for (int t = 0; t < ri->positionsCount(); t+=t_step)
     {
-        const QLineF & line = ri->radius(t).translated(ct);
+        QLineF lr = ri->radius(t);
+        lr.setP2(QPointF(lr.x2() * aspect, lr.y2()));
+        const QLineF & line = lr.translated(ct.x(), ct.y());
         bool stop = false;
         foreach (double dist, ri_coasts.keys())
         {
@@ -681,7 +731,14 @@ void S57_RadarModificator::viewportMoved()
                     scene()->addItem(ri_visible_coast_item);
                     ri_visible_coasts << ri_visible_coast_item;
 
-                    const QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
+                    QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
+
+                    test_line1.setP1(QPointF(test_line1.x1() / aspect, test_line1.y1()));
+                    test_line1.setP2(QPointF(test_line1.x2() / aspect, test_line1.y2()));
+
+                    test_line2.setP1(QPointF(test_line2.x1() / aspect, test_line2.y1()));
+                    test_line2.setP2(QPointF(test_line2.x2() / aspect, test_line2.y2()));
+
                     double angle1 = 90.0 - test_line1.angle();
                     double angle2 = 90.0 - test_line2.angle();
                     if (angle1 < 0)
@@ -702,8 +759,12 @@ void S57_RadarModificator::viewportMoved()
                     }
                     stop = true;
 
+
                     const float len_1 = test_line1.length() * ri->blockSize() / radius;
                     const float len_2 = test_line2.length() * ri->blockSize() / radius;
+
+//                    const float len_1 = ::sqrt((test_line1.p2().x() - test_line1.p1().x()) * (test_line1.p2().x() - test_line1.p1().x()) / (aspect * aspect) + (test_line1.p2().y() - test_line1.p1().y()) * (test_line1.p2().y() - test_line1.p1().y())) * ri->blockSize() / radius;
+//                    const float len_2 = ::sqrt((test_line1.p2().x() - test_line1.p1().x()) * (test_line1.p2().x() - test_line1.p1().x()) / (aspect * aspect) + (test_line1.p2().y() - test_line1.p1().y()) * (test_line1.p2().y() - test_line1.p1().y())) * ri->blockSize() / radius;
 
                     if (angle1 > angle2 && angle1 - angle2 > ri->positionsCount() / 2)
                     {
@@ -735,14 +796,22 @@ void S57_RadarModificator::viewportMoved()
 void S57_RadarModificator::updateRoi(QPointF _pt)
 {
     QGraphicsView * _view = view();
+
+    if (!_view)
+    {
+        return;
+    }
+
+    const double aspect = scene()->aspect();
+
     QPointF tl = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).topLeft());
     QPointF br = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).bottomRight());
     QPointF ct = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).center());
 
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
 
-    double angle = ::atan2(_pt.y() - ct.y(), _pt.x() - ct.x());
-    double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) + 1e-15);
+    double angle = ::atan2(_pt.y() - ct.y(), (_pt.x() - ct.x()) / aspect);
+    double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) / (aspect * aspect) + 1e-15);
 
     if (length < 0.1 * radius)
     {
@@ -758,7 +827,6 @@ void S57_RadarModificator::updateRoi(QPointF _pt)
     const double a1 = angle - 0.1;
     const double a2 = angle + 0.1;
     QPolygonF rpi_poly;
-    const double aspect = scene()->aspect();
     rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
     rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
     rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
@@ -794,6 +862,78 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
     return false;
 }
 
+void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
+{
+    _painter->save();
+    _painter->resetTransform();
+
+    _painter->setPen(QPen(Qt::gray));
+    _painter->setBrush(QBrush(Qt::gray));
+
+    QRect r = view(_painter)->viewport()->rect();
+    const float radius = r.height() / 2;
+    const float center_x = r.width() / 2;
+    const float center_y = r.height() / 2;
+
+    QPainterPath lpath;
+    lpath.moveTo(0, 0);
+    lpath.lineTo(center_x, 0);
+    lpath.arcTo(center_x - radius, 0, 2 * radius, 2 * radius, 90, 180);
+    lpath.lineTo(0, 2 * radius);
+    lpath.lineTo(0, 0);
+
+    QPainterPath rpath;
+    lpath.moveTo(r.width(), 0);
+    lpath.lineTo(center_x, 0);
+    lpath.arcTo(center_x - radius, 0, 2 * radius, 2 * radius, 90, -180);
+    lpath.lineTo(r.width(), 2 * radius);
+    lpath.lineTo(r.width(), 0);
+
+    _painter->drawPath(lpath);
+    _painter->drawPath(rpath);
+
+    QPen p;
+    p.setWidth(1);
+    p.setCosmetic(true);
+    _painter->setBrush(QBrush());
+    QFont f("Arial");
+    f.setPixelSize(10);
+    _painter->setFont(f);
+    const int count = 36;
+    const float step = 360.0 / count;
+    p.setStyle(Qt::DotLine);
+    p.setColor(Qt::darkGray);
+    _painter->setPen(p);
+    for (int i = 0; i < count / 3; i++)
+    {
+        const float angle = i * step * 3 * M_PI / 180.0;
+        const float _sin = ::sin(angle - M_PI / 2);
+        const float _cos = ::cos(angle - M_PI / 2);
+        _painter->drawLine(QPoint(center_x, center_y), QPoint(center_x + radius * _cos, center_y + radius * _sin));
+    }
+    p.setStyle(Qt::SolidLine);
+    p.setColor(Qt::white);
+    _painter->setPen(p);
+    const float text_offset_x = -0.015 * radius;
+    const float text_offset_y = 0.01 * radius;
+    const float tick_offset = 0.985 * radius;
+    const float label_offset = 0.96 * radius;
+    for (int i = 0; i < count; i++)
+    {
+        const float angle = i * step * M_PI / 180.0;
+        const float _sin = ::sin(angle - M_PI / 2);
+        const float _cos = ::cos(angle - M_PI / 2);
+        _painter->drawLine(QPoint(center_x + tick_offset * _cos, center_y + tick_offset * _sin), QPoint(center_x + radius * _cos, center_y + radius * _sin));
+        _painter->drawText(QPoint(center_x + label_offset * _cos + text_offset_x, center_y + label_offset * _sin + text_offset_y), QString::number(i * step));
+    }
+    _painter->restore();
+}
+
+void S57_RadarModificator::onDrawBackground(QPainter * _painter, const QRectF & _rect)
+{
+    _painter->fillRect(_rect, Qt::black);
+}
+
 QImage S57_RadarModificator::roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const // angles in radians, 0 <= angle <= 2 * M_PI
 {
     return ri->roi(start_angle, stop_angle, start_distance, stop_distance);
@@ -809,3 +949,17 @@ QImage S57_RadarModificator::roi() const
     return ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right());
 }
 
+bool S57_RadarModificator::eventFilter(QObject * _obj, QEvent * _ev)
+{
+    if (_obj == view())
+    {
+        switch (_ev->type())
+        {
+        case QEvent::Show:
+        case QEvent::Resize:
+            QMetaObject::invokeMethod(this, "viewportMoved", Qt::QueuedConnection);
+            break;
+        }
+    }
+    return false;
+}

@@ -81,15 +81,18 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     scene = new S57_ExtendedGraphicsScene();
     scene->setAspect(aspect);
     scene->installEventFilter(this);
+    connect(scene, SIGNAL(scaleChanged()), this, SLOT(scaleChanged()));
     ui->S57View->setScene(scene);
     builder.setScene(scene);
+
     builder.fullView();
 
     radar_sector = new QLabel();
     radar_sector->setVisible(false);
     radar_sector->setWindowTitle(QObject::tr("Radar sector"));
+    radar_sector->move(0, 48);
     radar_sector->resize(400, 400);
-    radar_sector->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+    radar_sector->setParent(this, Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::Tool);
 
     bool show_radar = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("radar", false).toBool();
     ui->actionRadar->setChecked(show_radar);
@@ -202,19 +205,17 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         break;
     }
     builder.render();
-    ui->S57View->scale(1, aspect);
-    updateVisibility();
-    progress->close();
-    progress->deleteLater();
-    progress = 0; count = 0;
-    ui->S57View->setUpdatesEnabled(true);
 
     if (ui->actionRadar->isChecked())
     {
         scene->addMod(& radar);
     }
 
-    radar.viewportMoved();
+    scene->fullView();
+    progress->close();
+    progress->deleteLater();
+    progress = 0; count = 0;
+    ui->S57View->setUpdatesEnabled(true);
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -261,25 +262,6 @@ void S57_DrawWindow::on_actionAdd_folder_triggered()
     openMaps(AddMapDir, _dir);
 }
 
-
-void S57_DrawWindow::keyPressEvent(QKeyEvent * _ke)
-{
-    ui->S57View->setUpdatesEnabled(false);
-    if (_ke->key() == Qt::Key_Plus)
-    {
-        ui->S57View->scale(1.25, 1.25);
-        //        qDebug() << currentScale();
-        updateVisibility();
-    }
-    if (_ke->key() == Qt::Key_Minus)
-    {
-        ui->S57View->scale(0.8, 0.8);
-        //        qDebug() << currentScale();
-        updateVisibility();
-    }
-    ui->S57View->setUpdatesEnabled(true);
-}
-
 void S57_DrawWindow::on_actionQuit_triggered()
 {
     close();
@@ -302,30 +284,6 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
             position_label->setText(_info);
             break;
         }
-        case QEvent::GraphicsSceneWheel:
-        {
-            QGraphicsSceneWheelEvent * _we = (QGraphicsSceneWheelEvent *)_ev;
-            ui->S57View->setUpdatesEnabled(false);
-            double _k = 0;
-            const int _d = _we->delta();
-            if (_d < 0)
-            {
-                _k = 0.8;
-            }
-            if (_d > 0)
-            {
-                _k = 1.25;
-            }
-            if (_d != 0)
-            {
-                ui->S57View->scale(_k, _k);
-                //                qDebug() << currentScale();
-                updateVisibility();
-                radar.viewportMoved();
-            }
-            ui->S57View->setUpdatesEnabled(true);
-            return (true);
-        }
         case QEvent::GraphicsSceneHelp:
             if (ui->actionTooltips->isChecked())
             {
@@ -337,88 +295,65 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
     return (QMainWindow::eventFilter(_obj, _ev));
 }
 
-void S57_DrawWindow::updateVisibility()
+void S57_DrawWindow::scaleChanged()
 {
     const double _scale = builder.scaleTo1();
-    if (ui->actionLandAndSea->isChecked())
-    {
-        builder.updateVisibility(0x7fffffff, true);
-    }
-    else
-    {
-        builder.updateVisibility(_scale);
-    }
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
-    radar.viewportMoved();
 }
-
-void S57_DrawWindow::scaleTo1(double _scale)
-{
-    if (!scene)
-    {
-        return;
-    }
-    ui->S57View->setUpdatesEnabled(false);
-    const double scale = builder.scaleTo1(_scale);
-    ui->S57View->scale(scale, scale);
-    updateVisibility();
-    ui->S57View->setUpdatesEnabled(true);
-}
-
 
 void S57_DrawWindow::on_action1_5000000_triggered()
 {
-    scaleTo1(5000000);
+    scene->scaleTo1(5000000);
 }
 
 void S57_DrawWindow::on_action1_2000000_triggered()
 {
-    scaleTo1(2000000);
+    scene->scaleTo1(2000000);
 }
 
 void S57_DrawWindow::on_action1_1000000_triggered()
 {
-    scaleTo1(1000000);
+    scene->scaleTo1(1000000);
 }
 
 void S57_DrawWindow::on_action1_500000_triggered()
 {
-    scaleTo1(500000);
+    scene->scaleTo1(500000);
 }
 
 void S57_DrawWindow::on_action1_200000_triggered()
 {
-    scaleTo1(200000);
+    scene->scaleTo1(200000);
 }
 
 void S57_DrawWindow::on_action1_100000_triggered()
 {
-    scaleTo1(100000);
+    scene->scaleTo1(100000);
 }
 
 void S57_DrawWindow::on_action1_50000_triggered()
 {
-    scaleTo1(50000);
+    scene->scaleTo1(50000);
 }
 
 void S57_DrawWindow::on_action1_20000_triggered()
 {
-    scaleTo1(20000);
+    scene->scaleTo1(20000);
 }
 
 void S57_DrawWindow::on_action1_10000_triggered()
 {
-    scaleTo1(10000);
+    scene->scaleTo1(10000);
 }
 
 void S57_DrawWindow::on_action1_5000_triggered()
 {
-    scaleTo1(5000);
+    scene->scaleTo1(5000);
 }
 
 void S57_DrawWindow::on_actionLandAndSea_triggered()
 {
-    updateVisibility();
+    scene->setLandAndSeaOnly(ui->actionLandAndSea->isChecked());
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("land_and_sea", ui->actionLandAndSea->isChecked());
 }
 
@@ -536,14 +471,7 @@ void S57_DrawWindow::on_action_aspect_1_1_triggered()
     if (aspect == Aspect12)
     {
         aspect = Aspect11;
-        ui->S57View->setUpdatesEnabled(false);
-        ui->S57View->scale(1.0, 0.5);
-        if (scene)
-        {
-            scene->setAspect(aspect);
-        }
-        updateVisibility();
-        ui->S57View->setUpdatesEnabled(true);
+        scene->setAspect(aspect);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);
     }
 }
@@ -553,14 +481,7 @@ void S57_DrawWindow::on_action_aspect_1_2_triggered()
     if (aspect == Aspect11)
     {
         aspect = Aspect12;
-        ui->S57View->setUpdatesEnabled(false);
-        ui->S57View->scale(1.0, 2.0);
-        if (scene)
-        {
-            scene->setAspect(aspect);
-        }
-        updateVisibility();
-        ui->S57View->setUpdatesEnabled(true);
+        scene->setAspect(aspect);
         QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);
     }
 }
@@ -573,24 +494,12 @@ double S57_DrawWindow::precisionAspect()
 
 void S57_DrawWindow::on_actionFullview_triggered()
 {
-    builder.fullView();
-    ui->S57View->scale(1, aspect);
-    updateVisibility();
+    scene->fullView();
 }
 
 void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 {
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
-}
-
-void S57_DrawWindow::showEvent(QShowEvent *)
-{
-    radar.viewportMoved();
-}
-
-void S57_DrawWindow::resizeEvent(QResizeEvent *)
-{
-    radar.viewportMoved();
 }
 
 void S57_DrawWindow::polarLinePointPrepare(const QLineF & line, float & q, float & r)
@@ -664,7 +573,9 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("radar", checked);
     if (checked)
     {
+        builder.setRenderEnabled(false);
         radar_sector->show();
+        activateWindow();
         ui->actionMouse_dragging->setChecked(false);
         on_actionMouse_dragging_triggered(false);
         ui->actionMouse_dragging->setEnabled(false);
@@ -679,8 +590,8 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         scene->addMod(& ruler);
         scene->addMod(& grid);
         scene->removeMod(& radar);
+        builder.setRenderEnabled(true);
     }
-    radar.viewportMoved();
 }
 
 void S57_DrawWindow::closeEvent(QCloseEvent *)

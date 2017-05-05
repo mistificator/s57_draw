@@ -14,7 +14,8 @@ DLLDESTDIR = ../s57_bin
 
 HEADERS  +=\
         s57_buildscene.h \
-    s57_extendedscene.h
+    s57_extendedscene.h \
+    s57_extendedscenemods.h
 
 DEFINES += \
         LIB_S57_DLL

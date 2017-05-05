@@ -8,93 +8,11 @@
 #endif
 
 #include "s57_buildscene.h"
-#include <QGraphicsItem>
-
-class LIB_S57_EXT_EXPORT S57_ExtendedBuildScene: public S57_BuildScene
-{
-    S57_ExtendedBuildScene(const S57_ExtendedBuildScene &) {}
-    S57_ExtendedBuildScene & operator = (const S57_ExtendedBuildScene &) { return (* this); }
-public:
-    S57_ExtendedBuildScene();
-    S57_ExtendedBuildScene(const QString & _lookups_path, const QString & _symbols_path);
-    virtual void setScene(QGraphicsScene * _scene);
-};
-
-class S57_ExtendedGraphicsScene;
-class LIB_S57_EXT_EXPORT S57_ExtendedGraphicsSceneModificator
-{
-    S57_ExtendedBuildScene * builder_ptr;
-    S57_ExtendedGraphicsScene * scene_ptr;
-public:
-    void registerBuildScene(S57_ExtendedBuildScene * _builder);
-    S57_ExtendedBuildScene * builder() const;
-    S57_ExtendedGraphicsScene * scene() const;
-    static QGraphicsView * view(QPainter * _painter);
-    QGraphicsView * view();
-    virtual ~S57_ExtendedGraphicsSceneModificator();
-    virtual void onDrawForeground(QPainter *, const QRectF &);
-    virtual bool onEvent(QEvent *);
-    virtual void onAddMod();
-    virtual void onRemoveMod();
-};
-
-class LIB_S57_EXT_EXPORT S57_GridModificator: public S57_ExtendedGraphicsSceneModificator
-{
-public:
-    virtual void onDrawForeground(QPainter * _painter, const QRectF & _rect);
-};
-
-class LIB_S57_EXT_EXPORT S57_RulerModificator: public S57_ExtendedGraphicsSceneModificator
-{
-    QGraphicsEllipseItem * circle[3];
-    bool in_ruler;
-public:
-    S57_RulerModificator();
-    virtual bool onEvent(QEvent * _ev);
-};
-
-class RadarItem;
-class LIB_S57_EXT_EXPORT S57_RadarModificator: public QObject, public S57_ExtendedGraphicsSceneModificator
-{
-    Q_OBJECT
-public:
-    S57_RadarModificator();
-
-    void setMetrics(int _portion_size, int _positions_count);
-    int blockSize() const;
-    int positionsCount() const;
-
-    QImage roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const; // angles in radians, 0 <= angle <= 2 * M_PI
-    QRectF roiRect() const;
-    QImage roi() const;
-
-    QMap<double, QList<QGraphicsLineItem *> > coasts() const;
-    QList<QGraphicsLineItem *> visibleCoasts() const;
-    QList<QLineF> visibleCoastsLines() const;
-
-    virtual void onAddMod();
-    virtual void onRemoveMod();
-    virtual bool onEvent(QEvent * _ev);
-
-public slots:
-    void viewportMoved();
-    void addData(const QVector<short> & block, int position);
-
-private:
-    RadarItem * ri;
-    QGraphicsPolygonItem * rpi;
-    QRectF roi_rect;
-    QPointF roi_point;
-    QList<QGraphicsPolygonItem *> all_coasts;
-    QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
-    QList<QGraphicsLineItem *> ri_visible_coasts;
-    QList<QLineF> ri_sec_lines;
-    void updateRoi(QPointF);
-};
+#include "s57_extendedscenemods.h"
 
 class LIB_S57_EXT_EXPORT S57_ExtendedGraphicsScene: public QGraphicsScene
 {
-    friend class S57_ExtendedBuildScene;
+    Q_OBJECT
     S57_ExtendedGraphicsScene(const S57_ExtendedGraphicsScene &) {}
     S57_ExtendedGraphicsScene & operator = (const S57_ExtendedGraphicsScene &) { return (* this); }
 public:
@@ -108,11 +26,26 @@ public:
     void setAspect(double);
     double aspect() const;
 
-    S57_ExtendedBuildScene * builder() const;
+    void setBuilder(S57_BuildScene * _builder);
+    S57_BuildScene * builder() const;
+    QGraphicsView * view() const;
+
+    void setLandAndSeaOnly(bool);
+    bool isLandAndSeaOnly() const;
+
+    void scale(double _scale);
+    void scaleTo1(double _scale);
+public slots:
+    void fullView();
+signals:
+    void scaleChanged();
 protected:
     virtual void drawForeground(QPainter * _painter, const QRectF & _rect);
-    virtual bool event(QEvent * _ev);
-    void registerBuildScene(S57_ExtendedBuildScene *);
+    virtual void drawBackground(QPainter * _painter, const QRectF & _rect);
+    virtual bool eventFilter(QObject * _obj, QEvent * _ev);
+    void updateVisibility();
+private slots:
+    void registerBuildScene(S57_BuildScene *);
 private:
     struct Data;
     Data * d;

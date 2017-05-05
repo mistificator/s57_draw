@@ -24,7 +24,7 @@ public:
     virtual ~S57_BuildScene();
     void setMercatorStretch(double ext_aspect);
 	void clear();
-    virtual void setScene(QGraphicsScene * _scene);
+   void setScene(QGraphicsScene * _scene);
     QGraphicsScene * scene() const;
     void build(const QString & _file_name);
 	void render();
@@ -59,6 +59,9 @@ public:
         }
         return _items;
     }
+
+    void setRenderEnabled(bool);
+    bool isRenderEnabled() const;
 private:
 	struct Data;
 	Data * d;

@@ -13,7 +13,8 @@ SOURCES  +=\
 
 HEADERS  += \
             s57_extendedscene.h \
-            s57_drawwindow.h
+            s57_drawwindow.h \
+    s57_extendedscenemods.h
 
 FORMS    += \
     S57_DrawWindow.ui

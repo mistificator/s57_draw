@@ -170,6 +170,7 @@ struct S57_BuildScene::Data
     QList<QGraphicsItem *> items;
     QStringList layers;
     double scale;
+    bool render_enabled;
     struct RegisterS57_Helper
     {
         RegisterS57_Helper()
@@ -179,7 +180,7 @@ struct S57_BuildScene::Data
         }
     };
 
-    Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0)
+    Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0), render_enabled(true)
     {
         static RegisterS57_Helper reg_s57;
         parse_styles(_lookups_path, _symbols_path);
@@ -837,14 +838,14 @@ struct S57_BuildScene::Data
         {
             for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
             {
-                _i.value()->setVisible(_i_scale <= _i.key());
+                _i.value()->setVisible(_i_scale <= _i.key() && render_enabled);
             }
         }
         else
         {
             for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
             {
-                _i.value()->setVisible(_i_scale == _i.key());
+                _i.value()->setVisible(_i_scale == _i.key() && render_enabled);
             }
         }
     }
@@ -889,6 +890,7 @@ void S57_BuildScene::setScene(QGraphicsScene * _scene)
     d->scene = _scene;
     if (d->scene)
     {
+        QMetaObject::invokeMethod(d->scene, "registerBuildScene", Q_ARG(S57_BuildScene *, this));
         d->scene->setSceneRect(d->scene->itemsBoundingRect());
     }
 }
@@ -1041,4 +1043,13 @@ double S57_BuildScene::scaleTo1(double _scale, double _dot_mm, double _km_in_deg
     return _degs / _new_degs;
 }
 
+void S57_BuildScene::setRenderEnabled(bool state)
+{
+    d->render_enabled = state;
+    updateVisibility(d->scale);
+}
 
+bool S57_BuildScene::isRenderEnabled() const
+{
+    return d->render_enabled;
+}

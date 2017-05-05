@@ -20,7 +20,10 @@ public:
     explicit S57_DrawWindow(QWidget *parent = 0);
     ~S57_DrawWindow();
 
-private slots:   
+private slots:
+    void scaleChanged();
+    void colorSchemeChanged();
+
     void on_actionOpen_triggered();
     void on_actionQuit_triggered();
     void on_actionAdd_triggered();
@@ -39,7 +42,6 @@ private slots:
     void on_actionLandAndSea_triggered();
     void on_actionExport_visible_area_triggered();
     void on_actionExport_whole_chart_triggered();
-    void colorSchemeChanged();
     void on_actionMouse_dragging_triggered(bool);
     void on_actionExport_symbols_triggered();
     void on_action_aspect_1_1_triggered();
@@ -51,9 +53,8 @@ private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
     QLabel * position_label, * scale_label;
-    void keyPressEvent(QKeyEvent * _ke);
     bool eventFilter(QObject *, QEvent *);
-    S57_ExtendedBuildScene builder;
+    S57_BuildScene builder;
     S57_RulerModificator ruler;
     S57_GridModificator grid;
     S57_RadarModificator radar;
@@ -71,14 +72,10 @@ private:
     void nextDir(const QString & _dir, bool _scan = false);
     enum OpenMode {OpenMapFile = 0, AddMapFile, OpenMapDir, AddMapDir};
     void openMaps(OpenMode mode, QString file_or_dir);
-    void updateVisibility();
-    void recreateScene();
-    void scaleTo1(double _scale);
+
     double precisionAspect();
 
-    void resizeEvent(QResizeEvent *);
     void timerEvent(QTimerEvent *);
-    void showEvent(QShowEvent *);
     void closeEvent(QCloseEvent *);
 };
 

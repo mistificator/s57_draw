@@ -61,9 +61,10 @@ class LIB_S57_EXT_EXPORT S57_RadarModificator: public QObject, public S57_Extend
 public:
     S57_RadarModificator();
 
-    void setMetrics(int _portion_size, int _positions_count);
+    void setMetrics(int _block_size, int _positions_count);
     int blockSize() const;
     int positionsCount() const;
+    int screenRadius() const;
 
     QImage roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const; // angles in radians, 0 <= angle <= 2 * M_PI
     QRectF roiRect() const;
@@ -71,11 +72,20 @@ public:
 
     QMap<double, QList<QGraphicsLineItem *> > coasts() const;
     QList<QGraphicsLineItem *> raycastCoasts() const;
-    QList<QLineF> visibleCoastsLines() const;
+    QList<QLineF> raycastCoastsLines() const;
 
+    enum RadarFlags {
+        RadarCircle =           1,
+        RadarSector =           2,
+        RadarCoasts =           4,
+        RadarRaycastCoasts =    8,
+        RadarForeground =       16,
+        RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground};
+    void setFlags(int);
+    int flags() const;
 public slots:
     void viewportMoved();
-    void addData(const QVector<short> & block, int position);
+    void addData(QVector<short> block, int position);
 
 protected:
     virtual void onAddMod();
@@ -92,10 +102,54 @@ private:
     QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
     QList<QGraphicsLineItem *> ri_visible_coasts;
     QList<QLineF> ri_sec_lines;
+    int radar_flags;
     void updateRoi(QPointF);
+    void polarLinePointPrepare(const QLineF & line, float & q, float & r);
+    float polarLinePoint(float q, float r, float t);
+    float polarLinePoint(const QLineF & line, float t);
     virtual bool eventFilter(QObject *, QEvent *);
 };
 
+#include <QUuid>
+class QFixedPixmapItemEx;
+class LIB_S57_EXT_EXPORT S57_TargetModificator: public QObject, public S57_ExtendedGraphicsSceneModificator
+{
+    Q_OBJECT
+public:
+    struct Target
+    {
+        QString name;
+        QUuid uuid;
+        QColor color;
+        QPolygonF geometry;
+        QList<QPointF> path;
+        QPointF pos;
+        float angle; // degrees, ccw
+        Target(): angle(0) {}
+    private:
+        friend class S57_TargetModificator;
+        QFixedPixmapItemEx * pixmap;
+    };
+    S57_TargetModificator();
+    ~S57_TargetModificator();
+    Target & addTarget(QPointF pos, QString name, const QUuid & uuid = QUuid::createUuid());
+    Target * targetByName(QString name);
+    Target * targetByUuid(QUuid uuid);
+    void removeTarget(const Target * target);
+    void removeTargetByName(QString name);
+    void removeTargetByUuid(QUuid uuid);
+    void clear();
+    QList<Target> & targets();
+    const QList<Target> & targets() const;
+public slots:
+    void renderTarget(const Target * target);
+    void renderTargets();
+protected:
+    virtual void onAddMod();
+    virtual void onRemoveMod();
+private:
+    QList<Target> _targets;
+};
 
 #endif // S57_EXTENDEDSCENEMODS_H
 

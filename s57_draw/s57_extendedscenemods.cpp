@@ -426,7 +426,7 @@ public:
         matrix.rotate(-90);
         return sec_img.transformed(matrix);
     }
-    QLineF radius(int position_number)
+    QLineF radius(int position_number) const
     {
         return QLineF(QPointF(), map_src[block_size * position_number + block_size - 1]);
     }
@@ -525,7 +525,7 @@ private:
     }
 };
 
-S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificator(), QObject()
+S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificator(), QObject(), radar_flags(RadarAll)
 {
     ri = new RadarItem();
     ri->setZValue(1000000);
@@ -538,9 +538,9 @@ S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificat
 
 }
 
-void S57_RadarModificator::setMetrics(int _portion_size, int _positions_count)
+void S57_RadarModificator::setMetrics(int _block_size, int _positions_count)
 {
-    ri->setMetrics(_portion_size, _positions_count);
+    ri->setMetrics(_block_size, _positions_count);
 }
 
 int S57_RadarModificator::blockSize() const
@@ -550,6 +550,11 @@ int S57_RadarModificator::blockSize() const
 int S57_RadarModificator::positionsCount() const
 {
     return ri->positionsCount();
+}
+
+int S57_RadarModificator::screenRadius() const
+{
+    return ri->screenSize().width() / 2;
 }
 
 QMap<double, QList<QGraphicsLineItem *> > S57_RadarModificator::coasts() const
@@ -562,7 +567,7 @@ QList<QGraphicsLineItem *> S57_RadarModificator::raycastCoasts() const
     return ri_visible_coasts;
 }
 
-QList<QLineF> S57_RadarModificator::visibleCoastsLines() const
+QList<QLineF> S57_RadarModificator::raycastCoastsLines() const
 {
     return ri_sec_lines;
 }
@@ -575,8 +580,8 @@ void S57_RadarModificator::onAddMod()
     scene()->addItem(ri);
     scene()->addItem(rpi);
 
-    ri->setVisible(true);
-    rpi->setVisible(true);
+    ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
+    rpi->setVisible((radar_flags & RadarSector) == RadarSector);
 
     all_coasts = builder()->items<QGraphicsPolygonItem>("LNDARE");
 
@@ -601,7 +606,10 @@ void S57_RadarModificator::onRemoveMod()
     {
         foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
         {
-            scene()->removeItem(ri_coast_item);
+            if (ri_coast_item->scene())
+            {
+                scene()->removeItem(ri_coast_item);
+            }
             delete ri_coast_item;
         }
     }
@@ -609,7 +617,10 @@ void S57_RadarModificator::onRemoveMod()
 
     foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
     {
-        scene()->removeItem(ri_visible_coast_item);
+        if (ri_visible_coast_item->scene())
+        {
+            scene()->removeItem(ri_visible_coast_item);
+        }
         delete ri_visible_coast_item;
     }
     ri_visible_coasts.clear();
@@ -624,8 +635,44 @@ void S57_RadarModificator::onRemoveMod()
     all_coasts.clear();
 }
 
-void S57_RadarModificator::addData(const QVector<short> & block, int position)
+void S57_RadarModificator::polarLinePointPrepare(const QLineF & line, float & q, float & r)
 {
+    const float t0 = line.p1().y() * 2 * M_PI / ri->positionsCount(), t1 = line.p2().y() * 2 * M_PI / ri->positionsCount();
+    const float r0 = line.p1().x(), r1 = line.p2().x();
+
+    q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
+    r = r0 * (::sin(t0) - q * ::cos(t0));
+}
+
+float S57_RadarModificator::polarLinePoint(float q, float r, float t)
+{
+    t = t * 2 * M_PI / ri->positionsCount();
+    return r / (::sin(t) - q * ::cos(t));
+}
+
+float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
+{
+    float q, r;
+    polarLinePointPrepare(line, q, r);
+    return polarLinePoint(q, r, t);
+}
+
+void S57_RadarModificator::addData(QVector<short> block, int position)
+{
+    foreach (QLineF line, ri_sec_lines)
+    {
+        QPointF pt;
+        if (line.intersect(QLineF(QPoint(1, position), QPointF(ri->blockSize(), position)), & pt) == QLineF::BoundedIntersection)
+        {
+            float q, r;
+            polarLinePointPrepare(line, q, r);
+            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f) // super resolution
+            {
+                block[qMin<float>(ri->blockSize() - 1, qMax<float>(0.0f, polarLinePoint(q, r, position + sub_pos)))] = 0xff;
+            }
+        }
+    }
+
     ri->addData(block, position);
 }
 
@@ -640,7 +687,10 @@ void S57_RadarModificator::viewportMoved()
     {
         foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
         {
-            scene()->removeItem(ri_coast_item);
+            if (ri_coast_item->scene())
+            {
+                scene()->removeItem(ri_coast_item);
+            }
             delete ri_coast_item;
         }
     }
@@ -648,13 +698,14 @@ void S57_RadarModificator::viewportMoved()
 
     foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
     {
-        scene()->removeItem(ri_visible_coast_item);
+        if (ri_visible_coast_item->scene())
+        {
+            scene()->removeItem(ri_visible_coast_item);
+        }
         delete ri_visible_coast_item;
     }
     ri_visible_coasts.clear();
     ri_sec_lines.clear();
-
-    updateRoi(roi_point);
 
     const double aspect = scene()->aspect();
 
@@ -668,6 +719,16 @@ void S57_RadarModificator::viewportMoved()
     ri->setScreenSize(QSize(sz, sz));
     ri->setPos(ct); // anchor center
     rpi->setPos(ct);
+
+    if ((radar_flags & RadarSector) == RadarSector)
+    {
+        updateRoi(roi_point);
+    }
+
+    if ((radar_flags & RadarCoasts) != RadarCoasts && (radar_flags & RadarRaycastCoasts) != RadarRaycastCoasts && (radar_flags & RadarSector) != RadarSector)
+    {
+        return;
+    }
 
     QPainterPath p1;
     p1.addEllipse(ct, radius * aspect, radius);
@@ -696,7 +757,10 @@ void S57_RadarModificator::viewportMoved()
                     {
                         QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
                         ri_coast_item->setPen(pen);
-                        scene()->addItem(ri_coast_item);
+                        if ((radar_flags & RadarCoasts) == RadarCoasts)
+                        {
+                            scene()->addItem(ri_coast_item);
+                        }
                         ri_coasts[dist_1] << ri_coast_item;
                     }
                 }
@@ -704,6 +768,11 @@ void S57_RadarModificator::viewportMoved()
                 prev_index = i;
             }
         }
+    }
+
+    if ((radar_flags & RadarRaycastCoasts) != RadarRaycastCoasts)
+    {
+        return;
     }
 
     pen.setColor(Qt::green);
@@ -728,7 +797,10 @@ void S57_RadarModificator::viewportMoved()
                     QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(coast_line);
                     ri_visible_coast_item->setPen(pen);
                     ri_visible_coast_item->setZValue(1000000);
-                    scene()->addItem(ri_visible_coast_item);
+                    if ((radar_flags & RadarRaycastCoasts) == RadarRaycastCoasts)
+                    {
+                        scene()->addItem(ri_visible_coast_item);
+                    }
                     ri_visible_coasts << ri_visible_coast_item;
 
                     QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
@@ -790,7 +862,7 @@ void S57_RadarModificator::viewportMoved()
             }
         }
     }
-    scene()->invalidate(QRectF(), QGraphicsScene::ItemLayer);
+//    scene()->invalidate(QRectF(), QGraphicsScene::ItemLayer);
 }
 
 void S57_RadarModificator::updateRoi(QPointF _pt)
@@ -854,7 +926,10 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
         const QPointF _pt = _me->scenePos();
         if ((_me->buttons() & Qt::LeftButton) == Qt::LeftButton)
         {
-            updateRoi(roi_point = _pt);
+            if ((radar_flags & RadarSector) == RadarSector)
+            {
+                updateRoi(roi_point = _pt);
+            }
         }
         break;
     }
@@ -864,6 +939,10 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
 
 void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
 {
+    if ((radar_flags & RadarForeground) != RadarForeground)
+    {
+        return;
+    }
     _painter->save();
     _painter->resetTransform();
 
@@ -962,4 +1041,246 @@ bool S57_RadarModificator::eventFilter(QObject * _obj, QEvent * _ev)
         }
     }
     return false;
+}
+
+void S57_RadarModificator::setFlags(int f)
+{
+    radar_flags = f;
+    ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
+    rpi->setVisible((radar_flags & RadarSector) == RadarSector);
+    viewportMoved();
+}
+
+int S57_RadarModificator::flags() const
+{
+    return radar_flags;
+}
+// ---------------------------------------------------------------------------------------------------------
+
+S57_TargetModificator::S57_TargetModificator(): QObject(), S57_ExtendedGraphicsSceneModificator()
+{
+}
+
+S57_TargetModificator::~S57_TargetModificator()
+{
+    clear();
+}
+
+S57_TargetModificator::Target & S57_TargetModificator::addTarget(QPointF pos, QString name, const QUuid & uuid)
+{
+    Target target;
+    target.name = name;
+    target.uuid = uuid;
+    target.pos = pos;
+    target.color = Qt::red;
+    target.geometry = QPolygonF()
+            << QPointF(0, -15)
+            << QPointF(5, -5)
+            << QPointF(5, 15)
+            << QPointF(0, 10)
+            << QPointF(-5, 15)
+            << QPointF(-5, -5)
+            << QPointF(0, -15);
+    target.pixmap = new QFixedPixmapItemEx();
+    target.pixmap->setToolTip(name);
+    target.pixmap->setZValue(1000000);
+    if (isActive())
+    {
+        scene()->addItem(target.pixmap);
+    }
+    _targets << target;
+    return _targets.back();
+}
+
+S57_TargetModificator::Target * S57_TargetModificator::targetByName(QString name)
+{
+    for (QList<Target>::iterator i = _targets.begin(); i != _targets.end(); ++i)
+    {
+        if (i->name == name)
+        {
+            return & * i;
+        }
+    }
+    return 0;
+}
+
+S57_TargetModificator::Target * S57_TargetModificator::targetByUuid(QUuid uuid)
+{
+    for (QList<Target>::iterator i = _targets.begin(); i != _targets.end(); ++i)
+    {
+        if (i->uuid == uuid)
+        {
+            return & * i;
+        }
+    }
+    return 0;
+}
+
+void S57_TargetModificator::removeTarget(const Target * target)
+{
+    if (!target)
+    {
+        return;
+    }
+    for (QList<Target>::iterator i = _targets.begin(); i != _targets.end(); ++i)
+    {
+        if (& * i == target)
+        {
+            if (i->pixmap)
+            {
+                if (i->pixmap->scene())
+                {
+                    i->pixmap->scene()->removeItem(i->pixmap);
+                }
+                delete i->pixmap;
+            }
+            _targets.erase(i);
+            return;
+        }
+    }
+}
+
+void S57_TargetModificator::removeTargetByName(QString name)
+{
+    for (QList<Target>::iterator i = _targets.begin(); i != _targets.end(); ++i)
+    {
+        if (i->name == name)
+        {
+            if (i->pixmap)
+            {
+                if (i->pixmap->scene())
+                {
+                    i->pixmap->scene()->removeItem(i->pixmap);
+                }
+                delete i->pixmap;
+            }
+            _targets.erase(i);
+            return;
+        }
+    }
+}
+
+void S57_TargetModificator::removeTargetByUuid(QUuid uuid)
+{
+    for (QList<Target>::iterator i = _targets.begin(); i != _targets.end(); ++i)
+    {
+        if (i->uuid == uuid)
+        {
+            if (i->pixmap)
+            {
+                if (i->pixmap->scene())
+                {
+                    i->pixmap->scene()->removeItem(i->pixmap);
+                }
+                delete i->pixmap;
+            }
+            _targets.erase(i);
+            return;
+        }
+    }
+}
+
+void S57_TargetModificator::clear()
+{
+    foreach (Target target, _targets)
+    {
+        if (target.pixmap)
+        {
+            if (target.pixmap->scene())
+            {
+                target.pixmap->scene()->removeItem(target.pixmap);
+            }
+            delete target.pixmap;
+        }
+    }
+    _targets.clear();
+}
+
+QList<S57_TargetModificator::Target> & S57_TargetModificator::targets()
+{
+    return _targets;
+}
+
+const QList<S57_TargetModificator::Target> & S57_TargetModificator::targets() const
+{
+    return _targets;
+}
+
+void S57_TargetModificator::onAddMod()
+{
+    foreach (Target target, _targets)
+    {
+        if (target.pixmap)
+        {
+            if (!target.pixmap->scene())
+            {
+                scene()->addItem(target.pixmap);
+            }
+        }
+    }
+    renderTargets();
+}
+
+void S57_TargetModificator::onRemoveMod()
+{
+    foreach (Target target, _targets)
+    {
+        if (target.pixmap)
+        {
+            if (target.pixmap->scene())
+            {
+                scene()->removeItem(target.pixmap);
+            }
+        }
+    }
+}
+
+void S57_TargetModificator::renderTarget(const Target * target)
+{
+    if (!isActive())
+    {
+        return;
+    }
+    if (!target)
+    {
+        return;
+    }
+    if (target->pixmap)
+    {
+        if (!target->pixmap->scene())
+        {
+            scene()->addItem(target->pixmap);
+        }
+        QPen pen(Qt::black, 1);
+        pen.setCosmetic(true);
+        QPolygonF geometry = target->geometry;
+        QTransform t;
+        t.rotate(target->angle);
+        geometry = t.map(geometry);
+        QRectF r = geometry.boundingRect();
+        geometry = geometry.translated(QPointF(- r.x(), - r.y()));
+        r = geometry.boundingRect();
+        QPixmap px(::ceilf(r.width()) + pen.width(), ::ceilf(r.height()) + pen.width());
+        px.fill(QColor(0, 0, 0, 0));
+        QPainter p(& px);
+        p.setPen(pen);
+        p.setBrush(QBrush(target->color));
+        p.drawPolygon(geometry);
+        target->pixmap->setPos(target->pos);
+        target->pixmap->setScreenSize(px.size());
+        target->pixmap->setPixmap(px);
+    }
+
+}
+
+void S57_TargetModificator::renderTargets()
+{
+    if (!isActive())
+    {
+        return;
+    }
+    foreach (Target target, _targets)
+    {
+        renderTarget(& target);
+    }
 }

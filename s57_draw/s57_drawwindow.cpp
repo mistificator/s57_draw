@@ -104,6 +104,8 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         radar_emu[i] = (qrand() & 0x7f);
     }
 
+//    radar.setFlags(S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarSector | S57_RadarModificator::RadarRaycastCoasts); // radar flags example
+
     timer_id = startTimer(0);
 }
 
@@ -215,7 +217,34 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     progress->close();
     progress->deleteLater();
     progress = 0; count = 0;
-    ui->S57View->setUpdatesEnabled(true);
+    ui->S57View->setUpdatesEnabled(true);   
+
+    QList<QGraphicsItem *> land_items = builder.items("LNDARE");
+    for (int i = 0; i < 15; i++)
+    {
+        targets.removeTargetByName("Test ship " + QString::number(i + 1));
+        S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
+        t.angle = 359.0 * qrand() / RAND_MAX;
+        bool found;
+        QPointF pos;
+        do
+        {
+            found = false;
+            pos = QPointF(scene->sceneRect().x() + scene->sceneRect().width() * qrand() / RAND_MAX, scene->sceneRect().y() + scene->sceneRect().height() * qrand() / RAND_MAX);
+            foreach (QGraphicsItem * item, land_items)
+            {
+                if (item->contains(pos))
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        while (found);
+        t.pos = pos;
+        t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
+    }
+    targets.renderTargets();
 }
 
 void S57_DrawWindow::on_actionOpen_triggered()
@@ -502,30 +531,10 @@ void S57_DrawWindow::on_actionTooltips_triggered(bool t)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }
 
-void S57_DrawWindow::polarLinePointPrepare(const QLineF & line, float & q, float & r)
-{
-    const float t0 = line.p1().y() * 2 * M_PI / radar.positionsCount(), t1 = line.p2().y() * 2 * M_PI / radar.positionsCount();
-    const float r0 = line.p1().x(), r1 = line.p2().x();
-
-    q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
-    r = r0 * (::sin(t0) - q * ::cos(t0));
-}
-
-float S57_DrawWindow::polarLinePoint(float q, float r, float t)
-{
-    t = t * 2 * M_PI / radar.positionsCount();
-    return r / (::sin(t) - q * ::cos(t));
-}
-
-float S57_DrawWindow::polarLinePoint(const QLineF & line, float t)
-{
-    float q, r;
-    polarLinePointPrepare(line, q, r);
-    return polarLinePoint(q, r, t);
-}
-
 void S57_DrawWindow::timerEvent(QTimerEvent *)
 {
+    QPointF ct = ui->S57View->viewport()->rect().center();
+
     static int pos = -1;
     for (int k = 0; k < 128; k++)
     {
@@ -540,16 +549,19 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         {
             v[i] = radar_emu[radar.blockSize() * pos + i];
         }
-        foreach (QLineF line, radar.visibleCoastsLines())
+
+        const int angle = pos * 360.0 / radar.positionsCount();
+        foreach (S57_TargetModificator::Target target, targets.targets())
         {
-            QPointF pt;
-            if (line.intersect(QLineF(QPoint(1, pos), QPointF(8191, pos)), & pt) == QLineF::BoundedIntersection)
+            QLineF line(ct, ui->S57View->mapFromScene(target.pos));
+            if (((int)(90 - line.angle()) + 360) % 360 == angle)
             {
-                float q, r;
-                polarLinePointPrepare(line, q, r);
-                for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f)
+                const int len = line.length() * radar.blockSize() / radar.screenRadius();
+                if (len + 2 < radar.blockSize())
                 {
-                    v[qMin(8191.0f, qMax(0.0f, polarLinePoint(q, r, pos + sub_pos)))] = 0xff;
+                    v[len] = 0xff;
+                    v[len + 1] = 0xff;
+                    v[len + 2] = 0xff;
                 }
             }
         }
@@ -581,6 +593,7 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         ui->actionMouse_dragging->setEnabled(false);
         scene->removeMod(& ruler);
         scene->removeMod(& grid);
+        scene->removeMod(& targets);
         scene->addMod(& radar);
     }
     else
@@ -589,6 +602,7 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         ui->actionMouse_dragging->setEnabled(true);
         scene->addMod(& ruler);
         scene->addMod(& grid);
+        scene->addMod(& targets);
         scene->removeMod(& radar);
         builder.setRenderEnabled(true);
     }

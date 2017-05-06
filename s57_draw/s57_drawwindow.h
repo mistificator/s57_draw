@@ -58,12 +58,10 @@ private:
     S57_RulerModificator ruler;
     S57_GridModificator grid;
     S57_RadarModificator radar;
+    S57_TargetModificator targets;
     QLabel * radar_sector;
     int timer_id;
     QVector<short> radar_emu;
-    void polarLinePointPrepare(const QLineF & line, float & q, float & r);
-    float polarLinePoint(float q, float r, float t);
-    float polarLinePoint(const QLineF & line, float t);
     QProgressDialog * progress;
     bool cancel;
     qint64 count;

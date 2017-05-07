@@ -8,6 +8,7 @@
 #include <QGraphicsItem>
 #include <QDebug>
 #include <QScrollBar>
+#include <QTime>
 #include <cmath>
 #include "cpl_port.h"
 
@@ -557,9 +558,9 @@ int S57_RadarModificator::screenRadius() const
     return ri->screenSize().width() / 2;
 }
 
-QMap<double, QList<QGraphicsLineItem *> > S57_RadarModificator::coasts() const
+QList<QGraphicsLineItem *> S57_RadarModificator::coasts() const
 {
-    return ri_coasts;
+    return ri_unsorted_coasts;
 }
 
 QList<QGraphicsLineItem *> S57_RadarModificator::raycastCoasts() const
@@ -602,18 +603,16 @@ void S57_RadarModificator::onRemoveMod()
     disconnect(view()->verticalScrollBar(), SIGNAL(valueChanged(int)), dynamic_cast<QObject *>(this), SLOT(viewportMoved()));
     disconnect(scene(), SIGNAL(scaleChanged()), dynamic_cast<QObject *>(this), SLOT(viewportMoved()));
 
-    foreach (double dist, ri_coasts.keys())
+    foreach (QGraphicsLineItem * ri_coast_item, ri_unsorted_coasts)
     {
-        foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+        if (ri_coast_item->scene())
         {
-            if (ri_coast_item->scene())
-            {
-                scene()->removeItem(ri_coast_item);
-            }
-            delete ri_coast_item;
+            scene()->removeItem(ri_coast_item);
         }
+        delete ri_coast_item;
     }
-    ri_coasts.clear();
+    ri_sorted_coasts.clear();
+    ri_unsorted_coasts.clear();
 
     foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
     {
@@ -676,6 +675,31 @@ void S57_RadarModificator::addData(QVector<short> block, int position)
     ri->addData(block, position);
 }
 
+class WidgetUpdatesDisabler
+{
+public:
+    WidgetUpdatesDisabler(QWidget * _w)
+    {
+        w = _w;
+        saved_state = w->updatesEnabled();
+        if (saved_state)
+        {
+            w->setUpdatesEnabled(false);
+        }
+    }
+    ~WidgetUpdatesDisabler()
+    {
+        if (saved_state != w->updatesEnabled())
+        {
+            w->setUpdatesEnabled(saved_state);
+        }
+    }
+
+private:
+    QWidget * w;
+    bool saved_state;
+};
+
 void S57_RadarModificator::viewportMoved()
 {
     if (!isActive())
@@ -683,31 +707,42 @@ void S57_RadarModificator::viewportMoved()
         return;
     }
 
-    foreach (double dist, ri_coasts.keys())
+    WidgetUpdatesDisabler wud(view());
+
+    S57_ExtendedGraphicsScene * _scene = scene();
+
+    QStringList log;
+    log << QString(__FUNCTION__) + " start";
+    QTime t;
+    t.start();
+
+    foreach (QGraphicsLineItem * ri_coast_item, ri_unsorted_coasts)
     {
-        foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+        if (ri_coast_item->scene())
         {
-            if (ri_coast_item->scene())
-            {
-                scene()->removeItem(ri_coast_item);
-            }
-            delete ri_coast_item;
+            _scene->removeItem(ri_coast_item);
         }
+        delete ri_coast_item;
     }
-    ri_coasts.clear();
+    ri_sorted_coasts.clear();
+    ri_unsorted_coasts.clear();
+
+    log << QString::number(t.elapsed()) + " cleanup coasts";
 
     foreach (QGraphicsLineItem * ri_visible_coast_item, ri_visible_coasts)
     {
         if (ri_visible_coast_item->scene())
         {
-            scene()->removeItem(ri_visible_coast_item);
+            _scene->removeItem(ri_visible_coast_item);
         }
         delete ri_visible_coast_item;
     }
     ri_visible_coasts.clear();
     ri_sec_lines.clear();
 
-    const double aspect = scene()->aspect();
+    log << QString::number(t.elapsed()) + " cleanup raycast coasts";
+
+    const double aspect = _scene->aspect();
 
     QPointF tl = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).topLeft());
     QPointF br = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).bottomRight());
@@ -723,6 +758,7 @@ void S57_RadarModificator::viewportMoved()
     if ((radar_flags & RadarSector) == RadarSector)
     {
         updateRoi(roi_point);
+        log << QString::number(t.elapsed()) + " update roi";
     }
 
     if ((radar_flags & RadarCoasts) != RadarCoasts && (radar_flags & RadarRaycastCoasts) != RadarRaycastCoasts && (radar_flags & RadarSector) != RadarSector)
@@ -730,6 +766,8 @@ void S57_RadarModificator::viewportMoved()
         return;
     }
 
+    const int pos_count = ri->positionsCount();
+    QList<int> angles;
     QPainterPath p1;
     p1.addEllipse(ct, radius * aspect, radius);
     QPen pen(Qt::yellow, 5);
@@ -759,9 +797,25 @@ void S57_RadarModificator::viewportMoved()
                         ri_coast_item->setPen(pen);
                         if ((radar_flags & RadarCoasts) == RadarCoasts)
                         {
-                            scene()->addItem(ri_coast_item);
+                            _scene->addItem(ri_coast_item);
                         }
-                        ri_coasts[dist_1] << ri_coast_item;
+                        ri_sorted_coasts[dist_1] << ri_coast_item;
+                        ri_unsorted_coasts << ri_coast_item;
+                        double angle = ::atan2((mid_pt.y() - ct.y()), (mid_pt.x() - ct.x()));
+                        angle = M_PI / 2 + angle;
+                        if (angle < 0)
+                        {
+                            angle += 2 * M_PI;
+                        }
+                        if (angle >= 2 * M_PI)
+                        {
+                            angle -= 2 * M_PI;
+                        }
+                        const int i_angle = angle * pos_count / (2 * M_PI);
+                        if (!angles.contains(i_angle))
+                        {
+                            angles << i_angle;
+                        }
                     }
                 }
                 prev_pt = pt;
@@ -769,6 +823,7 @@ void S57_RadarModificator::viewportMoved()
             }
         }
     }
+    log << QString::number(t.elapsed()) + " coasts gen";
 
     if ((radar_flags & RadarRaycastCoasts) != RadarRaycastCoasts)
     {
@@ -780,15 +835,23 @@ void S57_RadarModificator::viewportMoved()
 
 //    const int t_step = 1; // raycasting granularity (1 - max resolution)
     const int t_step = qMax(1, 1 << (int)(0.5 * ::log10f(builder()->scaleTo1())));
-    for (int t = 0; t < ri->positionsCount(); t+=t_step)
+    int t_next = 0;
+    qSort(angles);
+//    for (int t = 0; t < pos_count; t+=t_step)
+    foreach (int t, angles)
     {
+        if (t_next > t)
+        {
+            continue;
+        }
+        t_next = t + t_step;
         QLineF lr = ri->radius(t);
         lr.setP2(QPointF(lr.x2() * aspect, lr.y2()));
         const QLineF & line = lr.translated(ct.x(), ct.y());
         bool stop = false;
-        foreach (double dist, ri_coasts.keys())
+        foreach (QList<QGraphicsLineItem *> list, ri_sorted_coasts)
         {
-            foreach (QGraphicsLineItem * ri_coast_item, ri_coasts[dist])
+            foreach (QGraphicsLineItem * ri_coast_item, list)
             {
                 QPointF pt;
                 if (line.intersect(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
@@ -799,9 +862,15 @@ void S57_RadarModificator::viewportMoved()
                     ri_visible_coast_item->setZValue(1000000);
                     if ((radar_flags & RadarRaycastCoasts) == RadarRaycastCoasts)
                     {
-                        scene()->addItem(ri_visible_coast_item);
+                        _scene->addItem(ri_visible_coast_item);
                     }
                     ri_visible_coasts << ri_visible_coast_item;
+
+                    stop = true;
+                    if ((radar_flags & RadarSector) != RadarSector)
+                    {
+                        break;
+                    }
 
                     QLineF test_line1(ct, coast_line.p1()), test_line2(ct, coast_line.p2());
 
@@ -829,8 +898,6 @@ void S57_RadarModificator::viewportMoved()
                     {
                         t = angle - t_step + 1;
                     }
-                    stop = true;
-
 
                     const float len_1 = test_line1.length() * ri->blockSize() / radius;
                     const float len_2 = test_line2.length() * ri->blockSize() / radius;
@@ -862,7 +929,10 @@ void S57_RadarModificator::viewportMoved()
             }
         }
     }
-//    scene()->invalidate(QRectF(), QGraphicsScene::ItemLayer);
+
+    log << QString::number(t.elapsed()) + " raycast coasts gen";
+
+    qDebug() << log.join("\n");
 }
 
 void S57_RadarModificator::updateRoi(QPointF _pt)

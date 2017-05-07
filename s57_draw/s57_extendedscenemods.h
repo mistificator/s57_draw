@@ -70,7 +70,7 @@ public:
     QRectF roiRect() const;
     QImage roi() const;
 
-    QMap<double, QList<QGraphicsLineItem *> > coasts() const;
+    QList<QGraphicsLineItem *> coasts() const;
     QList<QGraphicsLineItem *> raycastCoasts() const;
     QList<QLineF> raycastCoastsLines() const;
 
@@ -99,8 +99,8 @@ private:
     QRectF roi_rect;
     QPointF roi_point;
     QList<QGraphicsPolygonItem *> all_coasts;
-    QMap<double, QList<QGraphicsLineItem *> > ri_coasts;
-    QList<QGraphicsLineItem *> ri_visible_coasts;
+    QMap<double, QList<QGraphicsLineItem *> > ri_sorted_coasts;
+    QList<QGraphicsLineItem *> ri_unsorted_coasts, ri_visible_coasts;
     QList<QLineF> ri_sec_lines;
     int radar_flags;
     void updateRoi(QPointF);

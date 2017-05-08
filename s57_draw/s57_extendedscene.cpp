@@ -30,6 +30,7 @@ struct S57_ExtendedGraphicsScene::Data
 S57_ExtendedGraphicsScene::S57_ExtendedGraphicsScene(QObject * _parent): QGraphicsScene(_parent), d(new Data(this))
 {
     installEventFilter(this);
+    connect(this, SIGNAL(changed(QList<QRectF>)), this, SIGNAL(scaleChanged()));
 }
 
 S57_ExtendedGraphicsScene::~S57_ExtendedGraphicsScene()
@@ -143,6 +144,7 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
     {
         _mod->onEvent(_ev);
     }
+
     return QGraphicsScene::event(_ev);
 }
 

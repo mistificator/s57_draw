@@ -28,6 +28,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     _f->setFrameStyle(QFrame::VLine);
     ui->statusbar->addPermanentWidget(_f);
     ui->statusbar->addPermanentWidget(scale_label = new QLabel(), 1);
+    ui->statusbar->addPermanentWidget(distance_label = new QLabel(), 1);
     _f = new QFrame();
     _f->setFrameStyle(QFrame::VLine);
     ui->statusbar->addPermanentWidget(_f);
@@ -328,6 +329,8 @@ void S57_DrawWindow::scaleChanged()
 {
     const double _scale = builder.scaleTo1();
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
+    const QRectF r = ui->S57View->mapToScene(ui->S57View->viewport()->rect()).boundingRect();
+    distance_label->setText(QString::number(qMin<int>(r.width() * 60, r.height() * 60)) + " " + QObject::tr("miles"));
 }
 
 void S57_DrawWindow::on_action1_5000000_triggered()

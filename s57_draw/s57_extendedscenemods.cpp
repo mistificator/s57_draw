@@ -656,7 +656,7 @@ float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
     return polarLinePoint(q, r, t);
 }
 
-void S57_RadarModificator::addData(QVector<short> block, int position)
+void S57_RadarModificator::addData(QVector<short> & block, int position)
 {
     foreach (QLineF line, ri_sec_lines)
     {

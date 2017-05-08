@@ -52,7 +52,7 @@ private slots:
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
-    QLabel * position_label, * scale_label;
+    QLabel * position_label, * scale_label, * distance_label;
     bool eventFilter(QObject *, QEvent *);
     S57_BuildScene builder;
     S57_RulerModificator ruler;

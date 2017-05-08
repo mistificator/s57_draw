@@ -85,7 +85,7 @@ public:
     int flags() const;
 public slots:
     void viewportMoved();
-    void addData(QVector<short> block, int position);
+    void addData(QVector<short> & block, int position);
 
 protected:
     virtual void onAddMod();

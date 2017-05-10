@@ -624,7 +624,7 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("radar", checked);
     if (checked)
     {
-        builder.setRenderEnabled(false);
+        builder.setRenderEnabled(ui->actionRadarHideMap->isChecked() ? false : true);
         radar_sector->show();
         activateWindow();
         ui->actionMouse_dragging->setChecked(false);
@@ -685,4 +685,12 @@ void S57_DrawWindow::on_actionRadarRaycastCoasts_triggered()
 void S57_DrawWindow::on_actionRadarForeground_triggered()
 {
     setRadarFlags();
+}
+
+void S57_DrawWindow::on_actionRadarHideMap_triggered()
+{
+    if (ui->actionRadar->isChecked())
+    {
+        builder.setRenderEnabled(!ui->actionRadarHideMap->isChecked());
+    }
 }

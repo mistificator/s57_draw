@@ -59,6 +59,8 @@ private slots:
 
     void on_actionRadarForeground_triggered();
 
+    void on_actionRadarHideMap_triggered();
+
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;

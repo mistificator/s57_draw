@@ -123,11 +123,13 @@
     <addaction name="actionRadarCoasts"/>
     <addaction name="actionRadarRaycastCoasts"/>
     <addaction name="actionRadarForeground"/>
+    <addaction name="separator"/>
+    <addaction name="actionRadarHideMap"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
-   <addaction name="menuTools"/>
    <addaction name="menuRadar"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
@@ -376,6 +378,17 @@
    </property>
    <property name="text">
     <string>Foreground</string>
+   </property>
+  </action>
+  <action name="actionRadarHideMap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Hide map</string>
    </property>
   </action>
  </widget>

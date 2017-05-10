@@ -46,9 +46,19 @@ private slots:
     void on_actionExport_symbols_triggered();
     void on_action_aspect_1_1_triggered();
     void on_action_aspect_1_2_triggered();
-	void on_actionFullview_triggered();
-	void on_actionTooltips_triggered(bool); 
+    void on_actionFullview_triggered();
+    void on_actionTooltips_triggered(bool);
     void on_actionRadar_triggered(bool);
+    void on_actionRadarCircle_triggered();
+
+    void on_actionRadarSector_triggered();
+
+    void on_actionRadarCoasts_triggered();
+
+    void on_actionRadarRaycastCoasts_triggered();
+
+    void on_actionRadarForeground_triggered();
+
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
@@ -72,6 +82,7 @@ private:
     void openMaps(OpenMode mode, QString file_or_dir);
 
     double precisionAspect();
+    void setRadarFlags();
 
     void timerEvent(QTimerEvent *);
     void closeEvent(QCloseEvent *);

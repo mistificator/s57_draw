@@ -51,7 +51,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>28</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -104,7 +104,6 @@
     <addaction name="actionLandAndSea"/>
     <addaction name="actionMouse_dragging"/>
     <addaction name="actionTooltips"/>
-    <addaction name="actionRadar"/>
     <addaction name="menuAspect_X_Y"/>
    </widget>
    <widget class="QMenu" name="menuTools">
@@ -113,9 +112,22 @@
     </property>
     <addaction name="actionExport_symbols"/>
    </widget>
+   <widget class="QMenu" name="menuRadar">
+    <property name="title">
+     <string>Radar</string>
+    </property>
+    <addaction name="actionRadar"/>
+    <addaction name="separator"/>
+    <addaction name="actionRadarCircle"/>
+    <addaction name="actionRadarSector"/>
+    <addaction name="actionRadarCoasts"/>
+    <addaction name="actionRadarRaycastCoasts"/>
+    <addaction name="actionRadarForeground"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
    <addaction name="menuTools"/>
+   <addaction name="menuRadar"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
@@ -309,6 +321,61 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionRadarCircle">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RadarCircle</string>
+   </property>
+  </action>
+  <action name="actionRadarSector">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RadarSector</string>
+   </property>
+  </action>
+  <action name="actionRadarCoasts">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RadarCoasts</string>
+   </property>
+  </action>
+  <action name="actionRadarRaycastCoasts">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RadarRaycastCoasts</string>
+   </property>
+  </action>
+  <action name="actionRadarForeground">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RadarForeground</string>
    </property>
   </action>
  </widget>

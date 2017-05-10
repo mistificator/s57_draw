@@ -617,3 +617,38 @@ void S57_DrawWindow::closeEvent(QCloseEvent *)
     radar_sector->close();
 }
 
+  void S57_DrawWindow::setRadarFlags()
+  {
+      radar.setFlags((ui->actionRadarCircle->isChecked() ? S57_RadarModificator::RadarCircle:0) |
+                     (ui->actionRadarSector->isChecked() ? S57_RadarModificator::RadarSector:0) |
+                     (ui->actionRadarCoasts->isChecked() ? S57_RadarModificator::RadarCoasts:0 )|
+                     (ui->actionRadarRaycastCoasts->isChecked() ? S57_RadarModificator::RadarRaycastCoasts:0)   |
+                     (ui->actionRadarForeground->isChecked() ? S57_RadarModificator::RadarForeground:0)
+                     ); // radar flags example
+
+  }
+
+void S57_DrawWindow::on_actionRadarCircle_triggered()
+{
+    setRadarFlags();
+}
+
+void S57_DrawWindow::on_actionRadarSector_triggered()
+{
+     setRadarFlags();
+}
+
+void S57_DrawWindow::on_actionRadarCoasts_triggered()
+{
+    setRadarFlags();
+}
+
+void S57_DrawWindow::on_actionRadarRaycastCoasts_triggered()
+{
+    setRadarFlags();
+}
+
+void S57_DrawWindow::on_actionRadarForeground_triggered()
+{
+    setRadarFlags();
+}

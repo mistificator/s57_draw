@@ -51,7 +51,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>28</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -331,7 +331,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>RadarCircle</string>
+    <string>Circle</string>
    </property>
   </action>
   <action name="actionRadarSector">
@@ -342,7 +342,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>RadarSector</string>
+    <string>Sector</string>
    </property>
   </action>
   <action name="actionRadarCoasts">
@@ -353,7 +353,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>RadarCoasts</string>
+    <string>Coasts</string>
    </property>
   </action>
   <action name="actionRadarRaycastCoasts">
@@ -364,7 +364,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>RadarRaycastCoasts</string>
+    <string>Raycast Coasts</string>
    </property>
   </action>
   <action name="actionRadarForeground">
@@ -375,7 +375,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>RadarForeground</string>
+    <string>Foreground</string>
    </property>
   </action>
  </widget>

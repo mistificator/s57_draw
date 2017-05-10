@@ -44,3 +44,4 @@ SOURCES += \
     s57_extendedscene.cpp \
     s57_extendedscenemods.cpp
 
+unix: QMAKE_CXXFLAGS += -std=c++11

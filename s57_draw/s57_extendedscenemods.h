@@ -8,6 +8,7 @@
 #endif
 
 #include <QGraphicsItem>
+#include <QGraphicsView>
 
 class S57_BuildScene;
 class S57_ExtendedGraphicsScene;

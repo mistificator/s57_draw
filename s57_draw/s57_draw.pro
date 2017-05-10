@@ -30,7 +30,7 @@ unix:LIBS +=\
             ../s57_bin/lib_prti99.a
 
 unix:QMAKE_LFLAGS += -ldl
-
+unix:QMAKE_CXXFLAGS += -std=c++11
 OTHER_FILES += \
             dic.txt \
             s57_draw.ts \

@@ -8,7 +8,7 @@
 #endif
 
 #include <QGraphicsScene>
-
+#include <QGraphicsItem>
 class QPainter;
 class QRectF;
 class QString;

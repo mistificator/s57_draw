@@ -589,18 +589,21 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
             v[i] = radar_emu[block_size * pos + i];
         }
 
-        const int angle = pos * 360.0 / radar.positionsCount();
-        foreach (S57_TargetModificator::Target target, targets.targets())
+        if (ui->actionTargets->isChecked())
         {
-            QLineF line(ct, ui->S57View->mapFromScene(target.pos));
-            if (((int)(90 - line.angle()) + 360) % 360 == angle)
+            const int angle = pos * 360.0 / radar.positionsCount();
+            foreach (S57_TargetModificator::Target target, targets.targets())
             {
-                const int len = line.length() * block_size / radar.screenRadius();
-                if (len + 2 < radar.blockSize())
+                QLineF line(ct, ui->S57View->mapFromScene(target.pos));
+                if (((int)(90 - line.angle()) + 360) % 360 == angle)
                 {
-                    v[len] = 0xff;
-                    v[len + 1] = 0xff;
-                    v[len + 2] = 0xff;
+                    const int len = line.length() * block_size / radar.screenRadius();
+                    if (len + 2 < radar.blockSize())
+                    {
+                        v[len] = 0xff;
+                        v[len + 1] = 0xff;
+                        v[len + 2] = 0xff;
+                    }
                 }
             }
         }
@@ -624,7 +627,7 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("radar", checked);
     if (checked)
     {
-        builder.setRenderEnabled(ui->actionRadarHideMap->isChecked() ? false : true);
+        builder.setRenderEnabled(!ui->actionRadarHideMap->isChecked());
         radar_sector->show();
         activateWindow();
         ui->actionMouse_dragging->setChecked(false);
@@ -632,7 +635,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         ui->actionMouse_dragging->setEnabled(false);
         scene->removeMod(& ruler);
         scene->removeMod(& grid);
-        scene->removeMod(& targets);
+        if (ui->actionRadarHideMap->isChecked())
+        {
+            scene->removeMod(& targets);
+        }
         scene->addMod(& radar);
     }
     else
@@ -641,7 +647,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         ui->actionMouse_dragging->setEnabled(true);
         scene->addMod(& ruler);
         scene->addMod(& grid);
-        scene->addMod(& targets);
+        if (ui->actionTargets->isChecked())
+        {
+            scene->addMod(& targets);
+        }
         scene->removeMod(& radar);
         builder.setRenderEnabled(true);
     }
@@ -687,10 +696,36 @@ void S57_DrawWindow::on_actionRadarForeground_triggered()
     setRadarFlags();
 }
 
-void S57_DrawWindow::on_actionRadarHideMap_triggered()
+void S57_DrawWindow::on_actionRadarHideMap_triggered(bool checked)
 {
     if (ui->actionRadar->isChecked())
     {
-        builder.setRenderEnabled(!ui->actionRadarHideMap->isChecked());
+        builder.setRenderEnabled(!checked);
+        if (!checked)
+        {
+            if (ui->actionTargets->isChecked())
+            {
+                scene->addMod(& targets);
+            }
+        }
+        else
+        {
+            scene->removeMod(& targets);
+        }
+    }
+}
+
+void S57_DrawWindow::on_actionTargets_triggered(bool checked)
+{
+    if (!ui->actionRadar->isChecked() || !ui->actionRadarHideMap->isChecked())
+    {
+        if (checked)
+        {
+            scene->addMod(& targets);
+        }
+        else
+        {
+            scene->removeMod(& targets);
+        }
     }
 }

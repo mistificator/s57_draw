@@ -100,6 +100,7 @@
      <addaction name="action_aspect_1_2"/>
     </widget>
     <addaction name="menuScale"/>
+    <addaction name="actionTargets"/>
     <addaction name="actionColorScheme"/>
     <addaction name="actionLandAndSea"/>
     <addaction name="actionMouse_dragging"/>
@@ -389,6 +390,17 @@
    </property>
    <property name="text">
     <string>Hide map</string>
+   </property>
+  </action>
+  <action name="actionTargets">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Targets</string>
    </property>
   </action>
  </widget>

@@ -96,238 +96,243 @@
         <translation>Соотношение (X:Y)</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="111"/>
+        <location filename="S57_DrawWindow.ui" line="112"/>
         <source>Tools</source>
         <translation>Инструменты</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="137"/>
+        <location filename="S57_DrawWindow.ui" line="138"/>
         <source>Open file</source>
         <translation>Открыть карту</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="140"/>
+        <location filename="S57_DrawWindow.ui" line="141"/>
         <source>Ctrl+O</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="145"/>
+        <location filename="S57_DrawWindow.ui" line="146"/>
         <source>Quit</source>
         <translation>Выход</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="153"/>
+        <location filename="S57_DrawWindow.ui" line="154"/>
         <source>Add file</source>
         <translation>Добавить карту</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="156"/>
+        <location filename="S57_DrawWindow.ui" line="157"/>
         <source>Ctrl+Shift+O</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="161"/>
+        <location filename="S57_DrawWindow.ui" line="162"/>
         <source>Open folder</source>
         <translation>Открыть папку карт</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="164"/>
+        <location filename="S57_DrawWindow.ui" line="165"/>
         <source>Ctrl+F</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="172"/>
+        <location filename="S57_DrawWindow.ui" line="173"/>
         <source>Add folder</source>
         <translation>Добавить папку карт</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="175"/>
+        <location filename="S57_DrawWindow.ui" line="176"/>
         <source>Ctrl+Shift+F</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="180"/>
+        <location filename="S57_DrawWindow.ui" line="181"/>
         <source>1:5000000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="303"/>
+        <location filename="S57_DrawWindow.ui" line="304"/>
         <source>Fullview</source>
         <translation>Полный вид</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="306"/>
+        <location filename="S57_DrawWindow.ui" line="307"/>
         <source>Ctrl+0</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="185"/>
+        <location filename="S57_DrawWindow.ui" line="186"/>
         <source>1:2000000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="190"/>
+        <location filename="S57_DrawWindow.ui" line="191"/>
         <source>1:1000000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="195"/>
+        <location filename="S57_DrawWindow.ui" line="196"/>
         <source>1:500000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="200"/>
+        <location filename="S57_DrawWindow.ui" line="201"/>
         <source>1:200000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="205"/>
+        <location filename="S57_DrawWindow.ui" line="206"/>
         <source>1:100000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="213"/>
+        <location filename="S57_DrawWindow.ui" line="214"/>
         <source>Land and sea only</source>
         <translation>Только суша и море</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="216"/>
+        <location filename="S57_DrawWindow.ui" line="217"/>
         <source>Ctrl+L</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="221"/>
+        <location filename="S57_DrawWindow.ui" line="222"/>
         <source>Export visible area</source>
         <translation>Экспорт видимой области</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="224"/>
+        <location filename="S57_DrawWindow.ui" line="225"/>
         <source>Ctrl+Shift+S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="229"/>
+        <location filename="S57_DrawWindow.ui" line="230"/>
         <source>Export chart</source>
         <translation>Экспорт карты</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="232"/>
+        <location filename="S57_DrawWindow.ui" line="233"/>
         <source>Ctrl+S</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="237"/>
+        <location filename="S57_DrawWindow.ui" line="238"/>
         <source>Color scheme</source>
         <translation>Цветовая схема</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="242"/>
+        <location filename="S57_DrawWindow.ui" line="243"/>
         <source>1:50000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="247"/>
+        <location filename="S57_DrawWindow.ui" line="248"/>
         <source>1:20000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="252"/>
+        <location filename="S57_DrawWindow.ui" line="253"/>
         <source>1:10000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="257"/>
+        <location filename="S57_DrawWindow.ui" line="258"/>
         <source>1:5000</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="265"/>
+        <location filename="S57_DrawWindow.ui" line="266"/>
         <source>Mouse dragging</source>
         <translation>Перетаскивание мышью</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="268"/>
+        <location filename="S57_DrawWindow.ui" line="269"/>
         <source>Ctrl+M</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="273"/>
+        <location filename="S57_DrawWindow.ui" line="274"/>
         <source>Export symbols</source>
         <translation>Экспорт значков</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="276"/>
+        <location filename="S57_DrawWindow.ui" line="277"/>
         <source>Ctrl+E</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="284"/>
+        <location filename="S57_DrawWindow.ui" line="285"/>
         <source>1:1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="287"/>
+        <location filename="S57_DrawWindow.ui" line="288"/>
         <source>Ctrl+Alt+1</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="295"/>
+        <location filename="S57_DrawWindow.ui" line="296"/>
         <source>1:2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="298"/>
+        <location filename="S57_DrawWindow.ui" line="299"/>
         <source>Ctrl+Alt+2</source>
         <translation></translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="314"/>
+        <location filename="S57_DrawWindow.ui" line="315"/>
         <source>Tooltips</source>
         <translation>Подсказки</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="336"/>
+        <location filename="S57_DrawWindow.ui" line="337"/>
         <source>Circle</source>
         <oldsource>RadarCircle</oldsource>
         <translation>Круг</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="347"/>
+        <location filename="S57_DrawWindow.ui" line="348"/>
         <source>Sector</source>
         <oldsource>RadarSector</oldsource>
         <translation>Сектор</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="358"/>
+        <location filename="S57_DrawWindow.ui" line="359"/>
         <source>Coasts</source>
         <oldsource>RadarCoasts</oldsource>
         <translation>Берега</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="369"/>
+        <location filename="S57_DrawWindow.ui" line="370"/>
         <source>Raycast Coasts</source>
         <oldsource>RadarRaycastCoasts</oldsource>
         <translation>Видимые берега</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="380"/>
+        <location filename="S57_DrawWindow.ui" line="381"/>
         <source>Foreground</source>
         <oldsource>RadarForeground</oldsource>
         <translation>Панель</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="385"/>
+        <location filename="S57_DrawWindow.ui" line="392"/>
         <source>Hide map</source>
         <translation>Скрывать карту</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="117"/>
-        <location filename="S57_DrawWindow.ui" line="322"/>
+        <location filename="S57_DrawWindow.ui" line="403"/>
+        <source>Targets</source>
+        <translation>Цели</translation>
+    </message>
+    <message>
+        <location filename="S57_DrawWindow.ui" line="118"/>
+        <location filename="S57_DrawWindow.ui" line="323"/>
         <source>Radar</source>
         <translation>Радар</translation>
     </message>
     <message>
-        <location filename="S57_DrawWindow.ui" line="325"/>
+        <location filename="S57_DrawWindow.ui" line="326"/>
         <source>Ctrl+R</source>
         <translation></translation>
     </message>

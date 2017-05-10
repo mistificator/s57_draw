@@ -50,16 +50,12 @@ private slots:
     void on_actionTooltips_triggered(bool);
     void on_actionRadar_triggered(bool);
     void on_actionRadarCircle_triggered();
-
     void on_actionRadarSector_triggered();
-
     void on_actionRadarCoasts_triggered();
-
     void on_actionRadarRaycastCoasts_triggered();
-
     void on_actionRadarForeground_triggered();
-
-    void on_actionRadarHideMap_triggered();
+    void on_actionRadarHideMap_triggered(bool checked);
+    void on_actionTargets_triggered(bool checked);
 
 private:
     Ui::S57_DrawWindow * ui;

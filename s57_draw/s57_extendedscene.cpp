@@ -19,6 +19,7 @@ struct S57_ExtendedGraphicsScene::Data
     double aspect;
     QList<S57_ExtendedGraphicsSceneModificator *> mods;
     bool land_and_sea;
+    QSize size;
     Data(S57_ExtendedGraphicsScene * _scene): scene(_scene), builder(0), aspect(1.0), land_and_sea(false)
     {
     }
@@ -30,12 +31,24 @@ struct S57_ExtendedGraphicsScene::Data
 S57_ExtendedGraphicsScene::S57_ExtendedGraphicsScene(QObject * _parent): QGraphicsScene(_parent), d(new Data(this))
 {
     installEventFilter(this);
-    connect(this, SIGNAL(changed(QList<QRectF>)), this, SIGNAL(scaleChanged()));
+    connect(this, SIGNAL(changed(QList<QRectF>)), this, SLOT(sceneChanged()));
 }
 
 S57_ExtendedGraphicsScene::~S57_ExtendedGraphicsScene()
 {
     delete d;
+}
+
+void S57_ExtendedGraphicsScene::sceneChanged()
+{
+    if (view())
+    {
+        if (d->size != view()->viewport()->size())
+        {
+            d->size = view()->viewport()->size();
+            emit scaleChanged();
+        }
+    }
 }
 
 void S57_ExtendedGraphicsScene::addMod(S57_ExtendedGraphicsSceneModificator * _mod)
@@ -48,8 +61,8 @@ void S57_ExtendedGraphicsScene::addMod(S57_ExtendedGraphicsSceneModificator * _m
             _mod->setActive(true);
             _mod->onAddMod();
         }
-        d->mods << _mod;
-    }
+        d->mods << _mod;        
+    }    
     invalidate();
     update();
 }

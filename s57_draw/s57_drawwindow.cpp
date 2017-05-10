@@ -330,7 +330,8 @@ void S57_DrawWindow::scaleChanged()
     const double _scale = builder.scaleTo1();
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
     const QRectF r = ui->S57View->mapToScene(ui->S57View->viewport()->rect()).boundingRect();
-    distance_label->setText(QString::number(qMin<int>(r.width() * 60, r.height() * 60)) + " " + QObject::tr("miles"));
+    const double miles = qMin<double>(r.width() * 60, r.height() * 60);
+    distance_label->setText(QString::number(miles, 'f', 1) + " " + QObject::tr("miles"));
 }
 
 void S57_DrawWindow::on_action1_5000000_triggered()

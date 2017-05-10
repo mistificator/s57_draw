@@ -46,6 +46,7 @@ protected:
     void updateVisibility();
 private slots:
     void registerBuildScene(S57_BuildScene *);
+    void sceneChanged();
 private:
     struct Data;
     Data * d;

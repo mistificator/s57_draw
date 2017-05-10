@@ -339,9 +339,9 @@ public:
         setMetrics(8192, 4096);
     }
     ~RadarItem() {}
-    void setMetrics(int _portion_size, int _positions_count)
+    void setMetrics(int _block_size, int _positions_count)
     {
-        block_size = _portion_size;
+        block_size = _block_size;
         positions_count = _positions_count;
 
         reset();
@@ -440,6 +440,7 @@ private:
     mutable QImage sec_img;
     void createSrcMap()
     {
+        qDebug() << "createSrcMap" << block_size << positions_count;
         map_src.resize(block_size * positions_count);
         map_src.fill(QPointF(0, 0));
         src.resize(block_size * positions_count);
@@ -456,16 +457,17 @@ private:
     }
     void createDstMap()
     {
-        if (map_src.size() < block_size * positions_count)
+        if (map_src.size() != block_size * positions_count)
         {
             return;
         }
         const int w = screenSize().width();
         const int h = screenSize().height();
-        if (dst.size() == w * h)
+        if (dst.size() == w * h && map_dst.size() == block_size * positions_count)
         {
             return;
         }
+        qDebug() << "createDstMap" << w << h;
         dst.resize(w * h);
         dst.fill(0);
 

@@ -62,7 +62,6 @@ class LIB_S57_EXT_EXPORT S57_RadarModificator: public QObject, public S57_Extend
 public:
     S57_RadarModificator();
 
-    void setMetrics(int _block_size, int _positions_count);
     int blockSize() const;
     int positionsCount() const;
     int screenRadius() const;
@@ -85,6 +84,7 @@ public:
     void setFlags(int);
     int flags() const;
 public slots:
+    void setMetrics(int _block_size, int _positions_count);
     void viewportMoved();
     void addData(QVector<short> & block, int position);
 

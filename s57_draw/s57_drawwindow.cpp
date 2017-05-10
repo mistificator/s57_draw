@@ -99,6 +99,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionRadar->setChecked(show_radar);
     on_actionRadar_triggered(show_radar);
 
+    qDebug() << "initial block size" << radar.blockSize();
     radar_emu.resize(radar.blockSize() * radar.positionsCount());
     for (int i = 0; i < radar.blockSize() * radar.positionsCount(); i++)
     {
@@ -106,6 +107,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     }
 
 //    radar.setFlags(S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarSector | S57_RadarModificator::RadarRaycastCoasts); // radar flags example
+//    radar.setFlags(S57_RadarModificator::RadarForeground | S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarRaycastCoasts); // radar flags example
 
     timer_id = startTimer(0);
 }
@@ -332,6 +334,38 @@ void S57_DrawWindow::scaleChanged()
     const QRectF r = ui->S57View->mapToScene(ui->S57View->viewport()->rect()).boundingRect();
     const double miles = qMin<double>(r.width() * 60, r.height() * 60);
     distance_label->setText(QString::number(miles, 'f', 1) + " " + QObject::tr("miles"));
+
+    int block_size = 8192;
+    if (miles <= 0.5)
+    {
+        block_size = 256;
+    }
+    else
+    if (miles <= 1)
+    {
+        block_size = 512;
+    }
+    else
+    if (miles <= 2)
+    {
+        block_size = 1024;
+    }
+    else
+    if (miles <= 4)
+    {
+        block_size = 2048;
+    }
+    else
+    if (miles <= 8)
+    {
+        block_size = 4096;
+    }
+    if (block_size != radar.blockSize())
+    {
+        radar.setMetrics(block_size, 4096);
+//        QMetaObject::invokeMethod(& radar, "setMetrics", Qt::QueuedConnection, Q_ARG(int, block_size), Q_ARG(int, 4096));
+        qDebug() << "miles" << miles << "block_size set to" << block_size;
+    }
 }
 
 void S57_DrawWindow::on_action1_5000000_triggered()
@@ -540,6 +574,8 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
     QPointF ct = ui->S57View->viewport()->rect().center();
 
     static int pos = -1;
+    const int block_size = radar.blockSize();
+//    qDebug() << "block_size" << block_size << "pos" << pos;
     for (int k = 0; k < 128; k++)
     {
         pos++;
@@ -547,11 +583,11 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
         {
             pos = 0;
         }
-        QVector<short> v(radar.blockSize());
+        QVector<short> v(block_size);
         v.fill(0);
         for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
         {
-            v[i] = radar_emu[radar.blockSize() * pos + i];
+            v[i] = radar_emu[block_size * pos + i];
         }
 
         const int angle = pos * 360.0 / radar.positionsCount();
@@ -560,7 +596,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent *)
             QLineF line(ct, ui->S57View->mapFromScene(target.pos));
             if (((int)(90 - line.angle()) + 360) % 360 == angle)
             {
-                const int len = line.length() * radar.blockSize() / radar.screenRadius();
+                const int len = line.length() * block_size / radar.screenRadius();
                 if (len + 2 < radar.blockSize())
                 {
                     v[len] = 0xff;

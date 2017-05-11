@@ -239,14 +239,31 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 
 void S57_DrawWindow::createTargets()
 {
-    if (land_items.isEmpty() || depth_items.isEmpty())
+    if (depth_items.isEmpty())
     {
         return;
     }
 //    qDebug() << __FUNCTION__ << "enter";
     targets_land_cache.clear();
     targets_depth_cache.clear();
+    /*
+    QRectF depth_rect = scene->sceneRect();
+    foreach (QGraphicsItem * item, depth_items)
+    {
+        QRectF br = item->boundingRect();
+        if (depth_rect.isEmpty())
+        {
+            depth_rect = item->boundingRect();
+        }
+        else
+        {
+            depth_rect = depth_rect.united(br);
+        }
+    }
+    qDebug() << depth_rect << scene->sceneRect();
+*/
 //    qDebug() << __FUNCTION__ << scene->sceneRect();
+    const QRectF depth_rect = scene->sceneRect();
     for (int i = 0; i < 15; i++)
     {
         targets.removeTargetByName("Test ship " + QString::number(i + 1));
@@ -262,7 +279,7 @@ void S57_DrawWindow::createTargets()
             do
             {
                 land_found = false;
-                t.pos = QPointF(scene->sceneRect().x() + scene->sceneRect().width() * qrand() / RAND_MAX, scene->sceneRect().y() + scene->sceneRect().height() * qrand() / RAND_MAX);
+                t.pos = QPointF(depth_rect.x() + depth_rect.width() * qrand() / RAND_MAX, depth_rect.y() + depth_rect.height() * qrand() / RAND_MAX);
                 foreach (QGraphicsItem * item, land_items)
                 {
                     if (item->contains(t.pos))
@@ -299,7 +316,7 @@ void S57_DrawWindow::moveTargets()
     {
         return;
     }
-    if (land_items.isEmpty() || depth_items.isEmpty())
+    if (depth_items.isEmpty())
     {
         return;
     }

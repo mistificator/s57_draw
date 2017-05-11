@@ -32,14 +32,17 @@ public:
     }
     void setScreenSize(const QSize & _size)
     {
+        prepareGeometryChange();
         screen_size = _size;
     }
     void setPixmap(const QPixmap & _pixmap)
     {
+        prepareGeometryChange();
         pixmap = _pixmap;
     }
     void setPixmap(const QPixmap * _pixmap)
     {
+        prepareGeometryChange();
         pixmap_ptr = (QPixmap *)_pixmap;
     }
     QRectF boundingRect() const

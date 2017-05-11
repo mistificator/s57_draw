@@ -243,8 +243,9 @@ public:
     {
         setScreenSize(QSize(10, 10));
     }
-    virtual void setScreenSize(const QSize & _size)
+    void setScreenSize(const QSize & _size)
     {
+        prepareGeometryChange();
         screen_size = _size;
     }
     QSize screenSize() const
@@ -253,21 +254,25 @@ public:
     }
     void setPixmap(const QPixmap & _pixmap)
     {
+        prepareGeometryChange();
         pixmap = _pixmap;
         src_type = Pixmap;
     }
     void setPixmap(const QPixmap * _pixmap)
     {
+        prepareGeometryChange();
         pixmap_ptr = (QPixmap *)_pixmap;
         src_type = Pixmap_Ptr;
     }
     void setImage(const QImage & _image)
     {
+        prepareGeometryChange();
         image = _image;
         src_type = Image;
     }
     void setImage(const QImage * _image)
     {
+        prepareGeometryChange();
         image_ptr = (QImage *)_image;
         src_type = Image_Ptr;
     }
@@ -318,7 +323,6 @@ public:
             break;
         }
     }
-
 private:
     QSize screen_size;
     QPixmap pixmap;
@@ -1007,7 +1011,7 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
     return false;
 }
 
-void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
+void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF & _rect)
 {
     if ((radar_flags & RadarForeground) != RadarForeground)
     {
@@ -1203,7 +1207,7 @@ void S57_TargetModificator::removeTarget(const Target * target)
                 {
                     i->pixmap->scene()->removeItem(i->pixmap);
                 }
-//                    delete i->pixmap; // memory leak here, crash if uncomment
+//                delete i->pixmap; // memory leak here, crash if uncomment // https://bugreports.qt.io/browse/QTBUG-50691
                 i->pixmap = 0;
             }
             _targets.erase(i);

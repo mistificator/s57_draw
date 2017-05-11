@@ -26,6 +26,14 @@ struct S57_ExtendedGraphicsScene::Data
     ~Data()
     {
     }
+    void viewScale(double sx, double sy)
+    {
+        QGraphicsView * _view = scene->view();
+        if (scene->view())
+        {
+            _view->scale(sx, sy);
+        }
+    }
 };
 
 S57_ExtendedGraphicsScene::S57_ExtendedGraphicsScene(QObject * _parent): QGraphicsScene(_parent), d(new Data(this))
@@ -111,13 +119,13 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
                 view()->setUpdatesEnabled(false);
                 if (_ke->key() == Qt::Key_Plus)
                 {
-                    view()->scale(1.25, 1.25);
+                    d->viewScale(1.25, 1.25);
                     //        qDebug() << currentScale();
                     updateVisibility();
                 }
                 if (_ke->key() == Qt::Key_Minus)
                 {
-                    view()->scale(0.8, 0.8);
+                    d->viewScale(0.8, 0.8);
                     //        qDebug() << currentScale();
                     updateVisibility();
                 }
@@ -143,7 +151,7 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
                 }
                 if (_d != 0)
                 {
-                    view()->scale(_k, _k);
+                    d->viewScale(_k, _k);
                     //                qDebug() << currentScale();
                     updateVisibility();
                 }
@@ -224,7 +232,7 @@ void S57_ExtendedGraphicsScene::scale(double _scale)
         return;
     }
     view()->setUpdatesEnabled(false);
-    view()->scale(_scale, _scale);
+    d->viewScale(_scale, _scale);
     updateVisibility();
     view()->setUpdatesEnabled(true);
 }
@@ -242,7 +250,7 @@ void S57_ExtendedGraphicsScene::fullView()
     }
     view()->setUpdatesEnabled(false);
     d->builder->fullView();
-    view()->scale(1, d->aspect);
+    d->viewScale(1, d->aspect);
     updateVisibility();
     view()->setUpdatesEnabled(true);
 }
@@ -256,7 +264,7 @@ void S57_ExtendedGraphicsScene::setAspect(double aspect)
         return;
     }
     view()->setUpdatesEnabled(false);
-    view()->scale(1, _scale);
+    d->viewScale(1, _scale);
     updateVisibility();
     view()->setUpdatesEnabled(true);
 }

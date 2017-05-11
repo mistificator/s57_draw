@@ -106,10 +106,19 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         radar_emu[i] = (qrand() & 0x7f);
     }
 
-//    radar.setFlags(S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarSector | S57_RadarModificator::RadarRaycastCoasts); // radar flags example
-//    radar.setFlags(S57_RadarModificator::RadarForeground | S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarRaycastCoasts); // radar flags example
+    setRadarFlags();
 
-    timer_id = startTimer(0);
+    knots_group = new QActionGroup(this);
+    knots_group->addAction(ui->action30_knots);
+    knots_group->addAction(ui->action300_knots);
+    knots_group->addAction(ui->action3000_knots);
+    knots_group->setExclusive(true);
+    ui->action30_knots->setData(30);
+    ui->action300_knots->setData(300);
+    ui->action3000_knots->setData(3000);
+
+    radar_timer_id = startTimer(0);
+    target_timer_id = startTimer(target_timer_period = 500);
 }
 
 S57_DrawWindow::~S57_DrawWindow()
@@ -222,33 +231,148 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     progress = 0; count = 0;
     ui->S57View->setUpdatesEnabled(true);   
 
-    QList<QGraphicsItem *> land_items = builder.items("LNDARE");
+    land_items = builder.items("LNDARE");
+    depth_items = builder.items("DEPARE");
+    createTargets();
+}
+
+void S57_DrawWindow::createTargets()
+{
+    targets_land_cache.clear();
+    targets_depth_cache.clear();
     for (int i = 0; i < 15; i++)
     {
         targets.removeTargetByName("Test ship " + QString::number(i + 1));
         S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
         t.angle = 359.0 * qrand() / RAND_MAX;
-        bool found;
-        QPointF pos;
+        t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
+        bool land_found, depth_found;
         do
         {
-            found = false;
-            pos = QPointF(scene->sceneRect().x() + scene->sceneRect().width() * qrand() / RAND_MAX, scene->sceneRect().y() + scene->sceneRect().height() * qrand() / RAND_MAX);
-            foreach (QGraphicsItem * item, land_items)
+            depth_found = false;
+            do
             {
-                if (item->contains(pos))
+                land_found = false;
+                t.pos = QPointF(scene->sceneRect().x() + scene->sceneRect().width() * qrand() / RAND_MAX, scene->sceneRect().y() + scene->sceneRect().height() * qrand() / RAND_MAX);
+                foreach (QGraphicsItem * item, land_items)
                 {
-                    found = true;
+                    if (item->contains(t.pos))
+                    {
+                        land_found = true;
+                        break;
+                    }
+                }
+            }
+            while (land_found);
+            foreach (QGraphicsItem * item, depth_items)
+            {
+                if (item->contains(t.pos))
+                {
+                    depth_found = true;
                     break;
                 }
             }
         }
-        while (found);
-        t.pos = pos;
-        t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
+        while (!depth_found);
     }
     targets.renderTargets();
 }
+
+double S57_DrawWindow::knotToScene(double knots, int msecs)
+{
+    return (knots / 60.0) * (msecs / 3600000.0);
+}
+
+void S57_DrawWindow::moveTargets()
+{
+    if (!ui->actionTargets->isChecked())
+    {
+        return;
+    }
+    enum Decision {DChangeDir = 0, DKeepMoving = 1};
+    const int target_knots = knots_group->checkedAction()->data().toInt();
+    const double target_step = knotToScene(target_knots, target_timer_period);
+    for (QList<S57_TargetModificator::Target>::iterator i = targets.targets().begin(); i != targets.targets().end(); ++i)
+    {
+        S57_TargetModificator::Target & t = * i;
+        Decision dec = DKeepMoving;
+        if (qrand() < 0.001 * RAND_MAX)
+        {
+            dec = DChangeDir;
+        }
+        switch (dec)
+        {
+        case DKeepMoving:
+            {
+                QPointF pos = QPointF(t.pos.x() + scene->aspect() * target_step * ::cos((t.angle - 90) * M_PI / 180.0), t.pos.y() + target_step * ::sin((t.angle - 90) * M_PI / 180.0));
+                bool land_found = false, depth_found = false;
+                QGraphicsItem * current_depth_item = targets_depth_cache[t.name];
+                if (current_depth_item)
+                {
+                    if (current_depth_item->contains(pos))
+                    {
+                        depth_found = true;
+                    }
+                }
+                if (!depth_found)
+                {
+                    foreach (QGraphicsItem * item, depth_items)
+                    {
+                        if (item->contains(pos))
+                        {
+                            depth_found = true;
+                            current_depth_item = item;
+                            break;
+                        }
+                    }
+                }
+                if (depth_found)
+                {
+                    QGraphicsItem * current_land_item = targets_land_cache[t.name];
+                    if (current_land_item)
+                    {
+                        if (current_land_item->contains(pos))
+                        {
+                            land_found = true;
+                        }
+                    }
+                    if (!land_found)
+                    {
+                        foreach (QGraphicsItem * item, land_items)
+                        {
+                            if (item->contains(pos))
+                            {
+                                land_found = true;
+                                current_land_item = item;
+                                break;
+                            }
+                        }
+                        if (land_found)
+                        {
+                            targets_land_cache[t.name] = current_land_item;
+                        }
+                    }
+                    if (!land_found)
+                    {
+                        t.pos = pos;
+                        targets_depth_cache[t.name] = current_depth_item;
+                        break;
+                    }
+                    t.angle = 359.0 * qrand() / RAND_MAX;
+                }
+            }
+        case DChangeDir:
+            t.angle += 15;
+            if (t.angle >= 360.0)
+            {
+                t.angle -= 360.0;
+            }
+            break;
+        }
+    }
+    targets.renderTargets();
+}
+
 
 void S57_DrawWindow::on_actionOpen_triggered()
 {
@@ -568,58 +692,66 @@ void S57_DrawWindow::on_actionTooltips_triggered(bool t)
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }
 
-void S57_DrawWindow::timerEvent(QTimerEvent *)
+void S57_DrawWindow::timerEvent(QTimerEvent * te)
 {
-    QPointF ct = ui->S57View->viewport()->rect().center();
-
-    static int pos = -1;
-    const int block_size = radar.blockSize();
-//    qDebug() << "block_size" << block_size << "pos" << pos;
-    for (int k = 0; k < 128; k++)
+    if (te->timerId() == radar_timer_id)
     {
-        pos++;
-        if (pos >= radar.positionsCount())
-        {
-            pos = 0;
-        }
-        QVector<short> v(block_size);
-        v.fill(0);
-        for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
-        {
-            v[i] = radar_emu[block_size * pos + i];
-        }
+        QPointF ct = ui->S57View->viewport()->rect().center();
 
-        if (ui->actionTargets->isChecked())
+        static int pos = -1;
+        const int block_size = radar.blockSize();
+    //    qDebug() << "block_size" << block_size << "pos" << pos;
+        for (int k = 0; k < 128; k++)
         {
-            const int angle = pos * 360.0 / radar.positionsCount();
-            foreach (S57_TargetModificator::Target target, targets.targets())
+            pos++;
+            if (pos >= radar.positionsCount())
             {
-                QLineF line(ct, ui->S57View->mapFromScene(target.pos));
-                if (((int)(90 - line.angle()) + 360) % 360 == angle)
+                pos = 0;
+            }
+            QVector<short> v(block_size);
+            v.fill(0);
+            for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
+            {
+                v[i] = radar_emu[block_size * pos + i];
+            }
+
+            if (ui->actionTargets->isChecked())
+            {
+                const int angle = pos * 360.0 / radar.positionsCount();
+                foreach (S57_TargetModificator::Target target, targets.targets())
                 {
-                    const int len = line.length() * block_size / radar.screenRadius();
-                    if (len + 2 < radar.blockSize())
+                    QLineF line(ct, ui->S57View->mapFromScene(target.pos));
+                    if (((int)(90 - line.angle()) + 360) % 360 == angle)
                     {
-                        v[len] = 0xff;
-                        v[len + 1] = 0xff;
-                        v[len + 2] = 0xff;
+                        const int len = line.length() * block_size / radar.screenRadius();
+                        if (len + 2 < radar.blockSize())
+                        {
+                            v[len] = 0xff;
+                            v[len + 1] = 0xff;
+                            v[len + 2] = 0xff;
+                        }
                     }
                 }
             }
-        }
 
-        radar.addData(v, pos);
-    }
-    if (radar_sector->isVisible())
-    {
-        const QImage & img = radar.roi();
-        if (!img.size().isNull())
+            radar.addData(v, pos);
+        }
+        if (radar_sector->isVisible())
         {
-            radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
+            const QImage & img = radar.roi();
+            if (!img.size().isNull())
+            {
+                radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
+            }
         }
-    }
 
-    ui->S57View->viewport()->update();
+        ui->S57View->viewport()->update();
+    }
+    else
+    if (te->timerId() == target_timer_id)
+    {
+        moveTargets();
+    }
 }
 
 void S57_DrawWindow::on_actionRadar_triggered(bool checked)
@@ -728,4 +860,9 @@ void S57_DrawWindow::on_actionTargets_triggered(bool checked)
             scene->removeMod(& targets);
         }
     }
+}
+
+void S57_DrawWindow::on_actionReset_targets_triggered()
+{
+    createTargets();
 }

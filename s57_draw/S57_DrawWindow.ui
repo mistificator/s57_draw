@@ -99,8 +99,19 @@
      <addaction name="action_aspect_1_1"/>
      <addaction name="action_aspect_1_2"/>
     </widget>
+    <widget class="QMenu" name="menuTargets">
+     <property name="title">
+      <string>Targets</string>
+     </property>
+     <addaction name="actionTargets"/>
+     <addaction name="actionReset_targets"/>
+     <addaction name="separator"/>
+     <addaction name="action30_knots"/>
+     <addaction name="action300_knots"/>
+     <addaction name="action3000_knots"/>
+    </widget>
     <addaction name="menuScale"/>
-    <addaction name="actionTargets"/>
+    <addaction name="menuTargets"/>
     <addaction name="actionColorScheme"/>
     <addaction name="actionLandAndSea"/>
     <addaction name="actionMouse_dragging"/>
@@ -353,7 +364,7 @@
     <bool>true</bool>
    </property>
    <property name="checked">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Coasts</string>
@@ -401,6 +412,38 @@
    </property>
    <property name="text">
     <string>Targets</string>
+   </property>
+  </action>
+  <action name="action30_knots">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>30 knots</string>
+   </property>
+  </action>
+  <action name="action300_knots">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>300 knots</string>
+   </property>
+  </action>
+  <action name="action3000_knots">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>3000 knots</string>
+   </property>
+  </action>
+  <action name="actionReset_targets">
+   <property name="text">
+    <string>Reset targets</string>
    </property>
   </action>
  </widget>

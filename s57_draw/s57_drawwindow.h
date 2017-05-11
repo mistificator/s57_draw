@@ -6,6 +6,7 @@
 #include <QKeyEvent>
 #include <QProgressDialog>
 #include <QLabel>
+#include <QActionGroup>
 #include "s57_extendedscene.h"
 
 namespace Ui {
@@ -57,6 +58,8 @@ private slots:
     void on_actionRadarHideMap_triggered(bool checked);
     void on_actionTargets_triggered(bool checked);
 
+    void on_actionReset_targets_triggered();
+
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
@@ -68,7 +71,8 @@ private:
     S57_RadarModificator radar;
     S57_TargetModificator targets;
     QLabel * radar_sector;
-    int timer_id;
+    int radar_timer_id, target_timer_id;
+    int target_timer_period;
     QVector<short> radar_emu;
     QProgressDialog * progress;
     bool cancel;
@@ -81,6 +85,13 @@ private:
 
     double precisionAspect();
     void setRadarFlags();
+
+    QList<QGraphicsItem *> land_items, depth_items;
+    QActionGroup * knots_group;
+    void createTargets();
+    static double knotToScene(double knots, int msecs);
+    void moveTargets();
+    QMap<QString, QGraphicsItem *> targets_depth_cache, targets_land_cache;
 
     void timerEvent(QTimerEvent *);
     void closeEvent(QCloseEvent *);

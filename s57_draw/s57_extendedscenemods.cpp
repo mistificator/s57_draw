@@ -797,28 +797,32 @@ void S57_RadarModificator::viewportMoved()
                 {
                     if (i - prev_index == 1)
                     {
-                        QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
-                        ri_coast_item->setPen(pen);
-                        if ((radar_flags & RadarCoasts) == RadarCoasts)
+                        QLineF coast_line(prev_pt.x(), prev_pt.y(), pt.x(), pt.y());
+                        if (coast_line.length() < 0.16)
                         {
-                            _scene->addItem(ri_coast_item);
-                        }
-                        ri_sorted_coasts[dist_1] << ri_coast_item;
-                        ri_unsorted_coasts << ri_coast_item;
-                        double angle = ::atan2((mid_pt.y() - ct.y()), (mid_pt.x() - ct.x()));
-                        angle = M_PI / 2 + angle;
-                        if (angle < 0)
-                        {
-                            angle += 2 * M_PI;
-                        }
-                        if (angle >= 2 * M_PI)
-                        {
-                            angle -= 2 * M_PI;
-                        }
-                        const int i_angle = angle * pos_count / (2 * M_PI);
-                        if (!angles.contains(i_angle))
-                        {
-                            angles << i_angle;
+                            QGraphicsLineItem * ri_coast_item = new QGraphicsLineItem(coast_line);
+                            ri_coast_item->setPen(pen);
+                            if ((radar_flags & RadarCoasts) == RadarCoasts)
+                            {
+                                _scene->addItem(ri_coast_item);
+                            }
+                            ri_sorted_coasts[dist_1] << ri_coast_item;
+                            ri_unsorted_coasts << ri_coast_item;
+                            double angle = ::atan2((mid_pt.y() - ct.y()), (mid_pt.x() - ct.x()));
+                            angle = M_PI / 2 + angle;
+                            if (angle < 0)
+                            {
+                                angle += 2 * M_PI;
+                            }
+                            if (angle >= 2 * M_PI)
+                            {
+                                angle -= 2 * M_PI;
+                            }
+                            const int i_angle = angle * pos_count / (2 * M_PI);
+                            if (!angles.contains(i_angle))
+                            {
+                                angles << i_angle;
+                            }
                         }
                     }
                 }

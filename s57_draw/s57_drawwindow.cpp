@@ -219,22 +219,26 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         }
         break;
     }
+    const bool re = builder.isRenderEnabled();
+    builder.setRenderEnabled(true);
     builder.render();
+    scene->fullView();
+    builder.setRenderEnabled(re);
 
     if (ui->actionRadar->isChecked())
     {
         scene->addMod(& radar);
     }
 
-    scene->fullView();
     progress->close();
     progress->deleteLater();
     progress = 0; count = 0;
-    ui->S57View->setUpdatesEnabled(true);   
 
     land_items = builder.items("LNDARE");
     depth_items = builder.items("DEPARE");
     createTargets();
+
+    ui->S57View->setUpdatesEnabled(true);
 }
 
 void S57_DrawWindow::createTargets()
@@ -246,23 +250,6 @@ void S57_DrawWindow::createTargets()
 //    qDebug() << __FUNCTION__ << "enter";
     targets_land_cache.clear();
     targets_depth_cache.clear();
-    /*
-    QRectF depth_rect = scene->sceneRect();
-    foreach (QGraphicsItem * item, depth_items)
-    {
-        QRectF br = item->boundingRect();
-        if (depth_rect.isEmpty())
-        {
-            depth_rect = item->boundingRect();
-        }
-        else
-        {
-            depth_rect = depth_rect.united(br);
-        }
-    }
-    qDebug() << depth_rect << scene->sceneRect();
-*/
-//    qDebug() << __FUNCTION__ << scene->sceneRect();
     const QRectF depth_rect = scene->sceneRect();
     for (int i = 0; i < 15; i++)
     {
@@ -338,10 +325,12 @@ void S57_DrawWindow::moveTargets()
             {
                 QPointF pos = QPointF(t.pos.x() + scene->aspect() * target_step * ::cos((t.angle - 90) * M_PI / 180.0), t.pos.y() + target_step * ::sin((t.angle - 90) * M_PI / 180.0));
                 bool land_found = false, depth_found = false;
+                bool depth_cache_hit = false;
                 QGraphicsItem * current_depth_item = targets_depth_cache[t.name];
                 if (current_depth_item)
                 {
                     depth_found = current_depth_item->contains(pos);
+                    depth_cache_hit = depth_found;
                 }
                 if (!depth_found)
                 {
@@ -362,20 +351,16 @@ void S57_DrawWindow::moveTargets()
                     {
                         land_found = current_land_item->contains(pos);
                     }
-                    if (!land_found)
-                    {
+                    if (!land_found && !depth_cache_hit)
+                    {                        
                         foreach (QGraphicsItem * item, land_items)
                         {
                             if (item->contains(pos))
                             {
                                 land_found = true;
-                                current_land_item = item;
+                                targets_land_cache[t.name] = item;
                                 break;
                             }
-                        }
-                        if (land_found)
-                        {
-                            targets_land_cache[t.name] = current_land_item;
                         }
                     }
                     if (!land_found)

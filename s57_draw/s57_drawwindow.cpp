@@ -82,6 +82,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     scene = new S57_ExtendedGraphicsScene();
     scene->setAspect(aspect);
     scene->installEventFilter(this);
+    scene->setLandAndSeaOnly(ui->actionLandAndSea->isChecked());
     connect(scene, SIGNAL(scaleChanged()), this, SLOT(scaleChanged()));
     ui->S57View->setScene(scene);
     builder.setScene(scene);
@@ -238,14 +239,22 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 
 void S57_DrawWindow::createTargets()
 {
+    if (land_items.isEmpty() || depth_items.isEmpty())
+    {
+        return;
+    }
+//    qDebug() << __FUNCTION__ << "enter";
     targets_land_cache.clear();
     targets_depth_cache.clear();
+//    qDebug() << __FUNCTION__ << scene->sceneRect();
     for (int i = 0; i < 15; i++)
     {
         targets.removeTargetByName("Test ship " + QString::number(i + 1));
         S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
         t.angle = 359.0 * qrand() / RAND_MAX;
         t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
+        targets_land_cache[t.name] = 0;
+        targets_depth_cache[t.name] = 0;
         bool land_found, depth_found;
         do
         {
@@ -276,6 +285,7 @@ void S57_DrawWindow::createTargets()
         while (!depth_found);
     }
     targets.renderTargets();
+//    qDebug() << __FUNCTION__ << "exit";
 }
 
 double S57_DrawWindow::knotToScene(double knots, int msecs)
@@ -289,6 +299,11 @@ void S57_DrawWindow::moveTargets()
     {
         return;
     }
+    if (land_items.isEmpty() || depth_items.isEmpty())
+    {
+        return;
+    }
+//    qDebug() << __FUNCTION__ << "enter";
     enum Decision {DChangeDir = 0, DKeepMoving = 1};
     const int target_knots = knots_group->checkedAction()->data().toInt();
     const double target_step = knotToScene(target_knots, target_timer_period);
@@ -309,10 +324,7 @@ void S57_DrawWindow::moveTargets()
                 QGraphicsItem * current_depth_item = targets_depth_cache[t.name];
                 if (current_depth_item)
                 {
-                    if (current_depth_item->contains(pos))
-                    {
-                        depth_found = true;
-                    }
+                    depth_found = current_depth_item->contains(pos);
                 }
                 if (!depth_found)
                 {
@@ -331,10 +343,7 @@ void S57_DrawWindow::moveTargets()
                     QGraphicsItem * current_land_item = targets_land_cache[t.name];
                     if (current_land_item)
                     {
-                        if (current_land_item->contains(pos))
-                        {
-                            land_found = true;
-                        }
+                        land_found = current_land_item->contains(pos);
                     }
                     if (!land_found)
                     {
@@ -358,7 +367,6 @@ void S57_DrawWindow::moveTargets()
                         targets_depth_cache[t.name] = current_depth_item;
                         break;
                     }
-                    t.angle = 359.0 * qrand() / RAND_MAX;
                 }
             }
         case DChangeDir:
@@ -371,6 +379,7 @@ void S57_DrawWindow::moveTargets()
         }
     }
     targets.renderTargets();
+//    qDebug() << __FUNCTION__ << "exit";
 }
 
 
@@ -696,56 +705,60 @@ void S57_DrawWindow::timerEvent(QTimerEvent * te)
 {
     if (te->timerId() == radar_timer_id)
     {
-        QPointF ct = ui->S57View->viewport()->rect().center();
-
-        static int pos = -1;
-        const int block_size = radar.blockSize();
-    //    qDebug() << "block_size" << block_size << "pos" << pos;
-        for (int k = 0; k < 128; k++)
+        if (ui->actionRadar->isChecked())
         {
-            pos++;
-            if (pos >= radar.positionsCount())
-            {
-                pos = 0;
-            }
-            QVector<short> v(block_size);
-            v.fill(0);
-            for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
-            {
-                v[i] = radar_emu[block_size * pos + i];
-            }
+            QPointF ct = ui->S57View->viewport()->rect().center();
 
-            if (ui->actionTargets->isChecked())
+            static int pos = -1;
+            const int block_size = radar.blockSize();
+        //    qDebug() << "block_size" << block_size << "pos" << pos;
+            for (int k = 0; k < 128; k++)
             {
-                const int angle = pos * 360.0 / radar.positionsCount();
-                foreach (S57_TargetModificator::Target target, targets.targets())
+                pos++;
+                if (pos >= radar.positionsCount())
                 {
-                    QLineF line(ct, ui->S57View->mapFromScene(target.pos));
-                    if (((int)(90 - line.angle()) + 360) % 360 == angle)
+                    pos = 0;
+                }
+                QVector<short> v(block_size);
+                v.fill(0);
+                for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
+                {
+                    v[i] = radar_emu[block_size * pos + i];
+                }
+
+                if (ui->actionTargets->isChecked())
+                {
+                    const int angle = pos * 360.0 / radar.positionsCount();
+                    const double radius = radar.screenRadius();
+                    foreach (S57_TargetModificator::Target target, targets.targets())
                     {
-                        const int len = line.length() * block_size / radar.screenRadius();
-                        if (len + 2 < radar.blockSize())
+                        QLineF line(ct, ui->S57View->mapFromScene(target.pos));
+                        if (((int)(90 - line.angle()) + 360) % 360 == angle)
                         {
-                            v[len] = 0xff;
-                            v[len + 1] = 0xff;
-                            v[len + 2] = 0xff;
+                            const int len = line.length() * block_size / radius;
+                            if (len + 2 < block_size)
+                            {
+                                v[len] = 0xff;
+                                v[len + 1] = 0xff;
+                                v[len + 2] = 0xff;
+                            }
                         }
                     }
                 }
-            }
 
-            radar.addData(v, pos);
-        }
-        if (radar_sector->isVisible())
-        {
-            const QImage & img = radar.roi();
-            if (!img.size().isNull())
+                radar.addData(v, pos);
+            }
+            if (radar_sector->isVisible())
             {
-                radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
+                const QImage & img = radar.roi();
+                if (!img.size().isNull())
+                {
+                    radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
+                }
             }
-        }
 
-        ui->S57View->viewport()->update();
+            ui->S57View->viewport()->update();
+        }
     }
     else
     if (te->timerId() == target_timer_id)

@@ -78,8 +78,6 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
 
     const double aspect = scene()->aspect();
 
-    scene()->invalidate(QRectF(), QGraphicsScene::ForegroundLayer);
-
     _painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
     _painter->setFont(QFont("Arial", 12));
 
@@ -1065,10 +1063,11 @@ void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
     p.setStyle(Qt::SolidLine);
     p.setColor(Qt::white);
     _painter->setPen(p);
-    const float text_offset_x = -0.015 * radius;
+    _painter->setBrush(QBrush(qRgba(0, 0, 0, 80)));
+    const float text_offset_x = -0.02 * radius;
     const float text_offset_y = 0.01 * radius;
-    const float tick_offset = 0.985 * radius;
-    const float label_offset = 0.96 * radius;
+    const float tick_offset = 1.015 * radius;
+    const float label_offset = 1.045 * radius;
     for (int i = 0; i < count; i++)
     {
         const float angle = i * step * M_PI / 180.0;
@@ -1204,7 +1203,8 @@ void S57_TargetModificator::removeTarget(const Target * target)
                 {
                     i->pixmap->scene()->removeItem(i->pixmap);
                 }
-                delete i->pixmap;
+//                    delete i->pixmap; // memory leak here, crash if uncomment
+                i->pixmap = 0;
             }
             _targets.erase(i);
             return;
@@ -1218,15 +1218,7 @@ void S57_TargetModificator::removeTargetByName(QString name)
     {
         if (i->name == name)
         {
-            if (i->pixmap)
-            {
-                if (i->pixmap->scene())
-                {
-                    i->pixmap->scene()->removeItem(i->pixmap);
-                }
-                delete i->pixmap;
-            }
-            _targets.erase(i);
+            removeTarget(& * i);
             return;
         }
     }
@@ -1238,15 +1230,7 @@ void S57_TargetModificator::removeTargetByUuid(QUuid uuid)
     {
         if (i->uuid == uuid)
         {
-            if (i->pixmap)
-            {
-                if (i->pixmap->scene())
-                {
-                    i->pixmap->scene()->removeItem(i->pixmap);
-                }
-                delete i->pixmap;
-            }
-            _targets.erase(i);
+            removeTarget(& * i);
             return;
         }
     }
@@ -1263,6 +1247,7 @@ void S57_TargetModificator::clear()
                 target.pixmap->scene()->removeItem(target.pixmap);
             }
             delete target.pixmap;
+            target.pixmap = 0;
         }
     }
     _targets.clear();
@@ -1319,10 +1304,6 @@ void S57_TargetModificator::renderTarget(const Target * target)
     }
     if (target->pixmap)
     {
-        if (!target->pixmap->scene())
-        {
-            scene()->addItem(target->pixmap);
-        }
         QPen pen(Qt::black, 1);
         pen.setCosmetic(true);
         QPolygonF geometry = target->geometry;
@@ -1338,9 +1319,16 @@ void S57_TargetModificator::renderTarget(const Target * target)
         p.setPen(pen);
         p.setBrush(QBrush(target->color));
         p.drawPolygon(geometry);
-        target->pixmap->setPos(target->pos);
-        target->pixmap->setScreenSize(px.size());
-        target->pixmap->setPixmap(px);
+        if (target->pixmap)
+        {
+            if (isActive() && !target->pixmap->scene())
+            {
+                scene()->addItem(target->pixmap);
+            }
+            target->pixmap->setPos(target->pos);
+            target->pixmap->setScreenSize(px.size());
+            target->pixmap->setPixmap(px);
+        }
     }
 
 }

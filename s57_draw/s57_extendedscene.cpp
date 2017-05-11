@@ -93,17 +93,25 @@ QList<S57_ExtendedGraphicsSceneModificator *> S57_ExtendedGraphicsScene::mods() 
 
 void S57_ExtendedGraphicsScene::drawForeground(QPainter * _painter, const QRectF & _rect)
 {
-    foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
+    if (!d->mods.isEmpty())
     {
-        _mod->onDrawForeground(_painter, _rect);
+        foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
+        {
+            _mod->onDrawForeground(_painter, _rect);
+        }
+        invalidate(view()->mapToScene(view()->viewport()->rect()).boundingRect(), QGraphicsScene::ForegroundLayer);
     }
 }
 
 void S57_ExtendedGraphicsScene::drawBackground(QPainter * _painter, const QRectF & _rect)
 {
-    foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
+    if (!d->mods.isEmpty())
     {
-        _mod->onDrawBackground(_painter, _rect);
+        foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
+        {
+            _mod->onDrawBackground(_painter, _rect);
+        }
+        invalidate(view()->mapToScene(view()->viewport()->rect()).boundingRect(), QGraphicsScene::BackgroundLayer);
     }
 }
 

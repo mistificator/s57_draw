@@ -57,8 +57,8 @@ private slots:
     void on_actionRadarForeground_triggered();
     void on_actionRadarHideMap_triggered(bool checked);
     void on_actionTargets_triggered(bool checked);
-
     void on_actionReset_targets_triggered();
+
 
 private:
     Ui::S57_DrawWindow * ui;

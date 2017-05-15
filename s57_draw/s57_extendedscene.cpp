@@ -20,7 +20,8 @@ struct S57_ExtendedGraphicsScene::Data
     QList<S57_ExtendedGraphicsSceneModificator *> mods;
     bool land_and_sea;
     QSize size;
-    Data(S57_ExtendedGraphicsScene * _scene): scene(_scene), builder(0), aspect(1.0), land_and_sea(false)
+    int flags;
+    Data(S57_ExtendedGraphicsScene * _scene): scene(_scene), builder(0), aspect(1.0), land_and_sea(false), flags(S57_ExtendedGraphicsScene::SceneAll)
     {
     }
     ~Data()
@@ -45,6 +46,16 @@ S57_ExtendedGraphicsScene::S57_ExtendedGraphicsScene(QObject * _parent): QGraphi
 S57_ExtendedGraphicsScene::~S57_ExtendedGraphicsScene()
 {
     delete d;
+}
+
+void S57_ExtendedGraphicsScene::setFlags(int flags)
+{
+    d->flags = flags;
+}
+
+int S57_ExtendedGraphicsScene::flags() const
+{
+    return d->flags;
 }
 
 void S57_ExtendedGraphicsScene::sceneChanged()
@@ -122,7 +133,7 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
         case QEvent::KeyPress:
         {
             QKeyEvent * _ke = (QKeyEvent *)_ev;
-            if (view())
+            if (view() && (d->flags & SceneKeyZoom) == SceneKeyZoom)
             {
                 view()->setUpdatesEnabled(false);
                 if (_ke->key() == Qt::Key_Plus)
@@ -144,8 +155,8 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
         case QEvent::GraphicsSceneWheel:
         {
             QGraphicsSceneWheelEvent * _we = (QGraphicsSceneWheelEvent *)_ev;
-           if (view())
-           {
+            if (view() && (d->flags & SceneWheelZoom) == SceneWheelZoom)
+            {
                 view()->setUpdatesEnabled(false);
                 double _k = 0;
                 const int _d = _we->delta();
@@ -164,9 +175,17 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
                     updateVisibility();
                 }
                 view()->setUpdatesEnabled(true);
-           }
+            }
         }
         break;
+        case QEvent::GraphicsSceneHelp:
+        {
+            if ((d->flags & SceneToolTips) == SceneToolTips)
+            {
+                break;
+            }
+            return true;
+        }
     }
 
     foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
@@ -282,3 +301,8 @@ double S57_ExtendedGraphicsScene::aspect() const
     return d->aspect;
 }
 
+double S57_ExtendedGraphicsScene::precisionAspectHint() const
+{
+    const QPointF worldcenter = sceneRect().center();
+    return qAbs<double>(1.0 / ::cos(worldcenter.y() / 180.0 * M_PI));
+}

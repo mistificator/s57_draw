@@ -19,12 +19,23 @@ public:
     S57_ExtendedGraphicsScene(QObject * _parent = 0);
     ~S57_ExtendedGraphicsScene();
 
+    enum SceneFlags {
+        SceneWheelZoom  = 1,
+        SceneKeyZoom    = 2,
+        SceneToolTips   = 4,
+
+        SceneAll = SceneWheelZoom | SceneKeyZoom | SceneToolTips};
+    void setFlags(int);
+    int flags() const;
+
     void addMod(S57_ExtendedGraphicsSceneModificator * _mod);
     void removeMod(S57_ExtendedGraphicsSceneModificator * _mod);
     QList<S57_ExtendedGraphicsSceneModificator *> mods() const;
 
     void setAspect(double);
     double aspect() const;
+
+    double precisionAspectHint() const;
 
     void setBuilder(S57_BuildScene * _builder);
     S57_BuildScene * builder() const;

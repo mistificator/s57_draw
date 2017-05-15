@@ -52,6 +52,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionMouse_dragging->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("drag", true).toBool());
     on_actionMouse_dragging_triggered(ui->actionMouse_dragging->isChecked());
     ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
+    on_actionTooltips_triggered(ui->actionTooltips->isChecked());
 
     _ag = new QActionGroup(this);
     ui->action_aspect_1_1->setActionGroup(_ag);
@@ -451,12 +452,6 @@ bool S57_DrawWindow::eventFilter(QObject * _obj, QEvent * _ev)
             position_label->setText(_info);
             break;
         }
-        case QEvent::GraphicsSceneHelp:
-            if (ui->actionTooltips->isChecked())
-            {
-                break;
-            }
-            return true;
         }
     }
     return (QMainWindow::eventFilter(_obj, _ev));
@@ -700,6 +695,14 @@ void S57_DrawWindow::on_actionFullview_triggered()
 
 void S57_DrawWindow::on_actionTooltips_triggered(bool t)
 {
+    if (t)
+    {
+        scene->setFlags(scene->flags() | S57_ExtendedGraphicsScene::SceneToolTips);
+    }
+    else
+    {
+        scene->setFlags(scene->flags() & ~S57_ExtendedGraphicsScene::SceneToolTips);
+    }
     QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("tooltips", t);
 }
 
@@ -881,3 +884,4 @@ void S57_DrawWindow::on_actionReset_targets_triggered()
 {
     createTargets();
 }
+

@@ -586,7 +586,7 @@ void S57_RadarModificator::onAddMod()
     scene()->addItem(rpi);
 
     ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
-    rpi->setVisible((radar_flags & RadarSector) == RadarSector);
+    rpi->setVisible((radar_flags & RadarSectorSelector) == RadarSectorSelector);
 
     all_coasts = builder()->items<QGraphicsPolygonItem>("LNDARE");
 
@@ -1126,7 +1126,7 @@ void S57_RadarModificator::setFlags(int f)
 {
     radar_flags = f;
     ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
-    rpi->setVisible((radar_flags & RadarSector) == RadarSector);
+    rpi->setVisible((radar_flags & RadarSectorSelector) == RadarSectorSelector);
     viewportMoved();
 }
 

@@ -52,7 +52,6 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionMouse_dragging->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("drag", true).toBool());
     on_actionMouse_dragging_triggered(ui->actionMouse_dragging->isChecked());
     ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
-    on_actionTooltips_triggered(ui->actionTooltips->isChecked());
 
     _ag = new QActionGroup(this);
     ui->action_aspect_1_1->setActionGroup(_ag);
@@ -90,12 +89,15 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
 
     builder.fullView();
 
+    on_actionTooltips_triggered(ui->actionTooltips->isChecked());
+
     radar_sector = new QLabel();
     radar_sector->setVisible(false);
     radar_sector->setWindowTitle(QObject::tr("Radar sector"));
     radar_sector->move(0, 48);
     radar_sector->resize(400, 400);
     radar_sector->setParent(this, Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::Tool);
+
 
     bool show_radar = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("radar", false).toBool();
     ui->actionRadar->setChecked(show_radar);

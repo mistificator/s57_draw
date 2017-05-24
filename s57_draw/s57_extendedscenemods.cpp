@@ -676,7 +676,10 @@ void S57_RadarModificator::addData(QVector<short> & block, int position)
         }
     }
 
-    ri->addData(block, position);
+    if (ri->isVisible())
+    {
+        ri->addData(block, position);
+    }
 }
 
 class WidgetUpdatesDisabler

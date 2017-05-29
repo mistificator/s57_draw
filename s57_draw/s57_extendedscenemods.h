@@ -86,6 +86,7 @@ public:
     int flags() const;
 public slots:
     void setMetrics(int _block_size, int _positions_count);
+    void setRoiSize(int _d_radius, int _d_angle); // d_radius in 0 .. blockSize(), d_angle in 0 .. positionsCount()
     void viewportMoved();
     void addData(QVector<short> & block, int position);
 
@@ -105,6 +106,7 @@ private:
     QList<QGraphicsLineItem *> ri_unsorted_coasts, ri_visible_coasts;
     QList<QLineF> ri_sec_lines;
     int radar_flags;
+    int d_radius, d_angle;
     void updateRoi(QPointF);
     void polarLinePointPrepare(const QLineF & line, float & q, float & r);
     float polarLinePoint(float q, float r, float t);

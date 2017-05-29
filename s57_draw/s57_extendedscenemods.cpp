@@ -541,11 +541,26 @@ S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificat
     rpi->setPen(rpi_pen);
     rpi->setZValue(ri->zValue() + 1);
 
+    setRoiSize(0.2 * blockSize(), 0.2 * positionsCount());
+
 }
 
 void S57_RadarModificator::setMetrics(int _block_size, int _positions_count)
 {
     ri->setMetrics(_block_size, _positions_count);
+}
+
+void S57_RadarModificator::setRoiSize(int _d_radius, int _d_angle)
+{
+    if (_d_radius >= 0 && _d_radius <= blockSize())
+    {
+        d_radius = _d_radius;
+    }
+    if (_d_angle >= 0 && _d_angle <= positionsCount())
+    {
+        d_angle = _d_angle;
+    }
+    viewportMoved();
 }
 
 int S57_RadarModificator::blockSize() const
@@ -970,25 +985,44 @@ void S57_RadarModificator::updateRoi(QPointF _pt)
     double angle = ::atan2(_pt.y() - ct.y(), (_pt.x() - ct.x()) / aspect);
     double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) / (aspect * aspect) + 1e-15);
 
-    if (length < 0.1 * radius)
+    const double r_step = 0.5 * d_radius / blockSize();
+    const double a_step = M_PI * d_angle / positionsCount();
+
+    if (length < r_step * radius)
     {
-        length = 0.1 * radius;
+        length = r_step * radius;
     }
-    if (length > 0.9 * radius)
+    if (length > (1.0 - r_step) * radius)
     {
-        length = 0.9 * radius;
+        length = (1.0 - r_step) * radius;
     }
 
-    const double l1 = length - 0.1 * radius;
-    const double l2 = length + 0.1 * radius;
-    const double a1 = angle - 0.1;
-    const double a2 = angle + 0.1;
+    const double l1 = length - r_step * radius;
+    const double l2 = length + r_step * radius;
+    const double a1 = angle - a_step;
+    const double a2 = angle + a_step;
+/*
     QPolygonF rpi_poly;
     rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
     rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
     rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
     rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
-//    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+*/
+
+    QPolygonF rpi_poly;
+
+    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
+    rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
+    for (double a = a1; a <= a2; a += 0.05)
+    {
+        rpi_poly << QPointF(l2 * ::cos(a) * aspect, l2 * ::sin(a));
+    }
+    rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
+    rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
+    for (double a = a2; a >= a1; a -= 0.05)
+    {
+        rpi_poly << QPointF(l1 * ::cos(a) * aspect, l1 * ::sin(a));
+    }
 
     rpi->setPolygon(rpi_poly);
 

@@ -87,9 +87,11 @@ public:
 public slots:
     void setMetrics(int _block_size, int _positions_count);
     void setRoiSize(int _d_radius, int _d_angle); // d_radius in 0 .. blockSize(), d_angle in 0 .. positionsCount()
+    int roiRadius() const;
+    int roiAngle() const;
     void viewportMoved();
     void addData(QVector<short> & block, int position);
-
+    void updateRoi();
 protected:
     virtual void onAddMod();
     virtual void onRemoveMod();

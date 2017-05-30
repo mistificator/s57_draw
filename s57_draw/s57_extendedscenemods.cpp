@@ -548,19 +548,30 @@ S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificat
 void S57_RadarModificator::setMetrics(int _block_size, int _positions_count)
 {
     ri->setMetrics(_block_size, _positions_count);
+    setRoiSize(d_radius, d_angle);
 }
 
 void S57_RadarModificator::setRoiSize(int _d_radius, int _d_angle)
 {
-    if (_d_radius >= 0 && _d_radius <= blockSize())
+    if (_d_radius >= 0)
     {
-        d_radius = _d_radius;
+        d_radius = qMin(_d_radius, blockSize());
     }
-    if (_d_angle >= 0 && _d_angle <= positionsCount())
+    if (_d_angle >= 0)
     {
-        d_angle = _d_angle;
+        d_angle = qMin(_d_angle, positionsCount());
     }
-    viewportMoved();
+    updateRoi();
+}
+
+int S57_RadarModificator::roiRadius() const
+{
+    return d_radius;
+}
+
+int S57_RadarModificator::roiAngle() const
+{
+    return  d_angle;
 }
 
 int S57_RadarModificator::blockSize() const
@@ -695,6 +706,11 @@ void S57_RadarModificator::addData(QVector<short> & block, int position)
     {
         ri->addData(block, position);
     }
+}
+
+void S57_RadarModificator::updateRoi()
+{
+    updateRoi(roi_point);
 }
 
 class WidgetUpdatesDisabler

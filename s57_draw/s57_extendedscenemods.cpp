@@ -14,7 +14,7 @@
 
 // -----------------------------------------------------------------------------------------------
 
-S57_ExtendedGraphicsSceneModificator::S57_ExtendedGraphicsSceneModificator(): is_active(false)
+S57_ExtendedGraphicsSceneModificator::S57_ExtendedGraphicsSceneModificator(): is_active(false), builder_ptr(0)
 {
 
 }
@@ -49,7 +49,7 @@ QGraphicsView * S57_ExtendedGraphicsSceneModificator::view(QPainter * _painter)
     return dynamic_cast<QGraphicsView *>(dynamic_cast<QWidget *>(_painter->device())->parent());
 }
 
-QGraphicsView * S57_ExtendedGraphicsSceneModificator::view()
+QGraphicsView * S57_ExtendedGraphicsSceneModificator::view() const
 {
     return scene() ? (scene()->views().isEmpty() ? 0 : scene()->views().at(0)) : 0;
 }
@@ -542,7 +542,6 @@ S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificat
     rpi->setZValue(ri->zValue() + 1);
 
     setRoiSize(0.2 * blockSize(), 0.2 * positionsCount());
-
 }
 
 void S57_RadarModificator::setMetrics(int _block_size, int _positions_count)
@@ -553,14 +552,8 @@ void S57_RadarModificator::setMetrics(int _block_size, int _positions_count)
 
 void S57_RadarModificator::setRoiSize(int _d_radius, int _d_angle)
 {
-    if (_d_radius >= 0)
-    {
-        d_radius = qMin(_d_radius, blockSize());
-    }
-    if (_d_angle >= 0)
-    {
-        d_angle = qMin(_d_angle, positionsCount());
-    }
+    d_radius = qMin(_d_radius, blockSize());
+    d_angle = qMin(_d_angle, positionsCount());
     updateRoi();
 }
 
@@ -572,6 +565,25 @@ int S57_RadarModificator::roiRadius() const
 int S57_RadarModificator::roiAngle() const
 {
     return  d_angle;
+}
+
+void S57_RadarModificator::setRoiPos(QPointF pt)
+{
+    if (view())
+    {
+        pt = view()->mapFromScene(pt);
+        roi_point = pt;
+        updateRoi(roi_point);
+    }
+}
+
+QPointF S57_RadarModificator::roiPos() const
+{
+    if (view())
+    {
+        return view()->mapToScene(roi_point.toPoint());
+    }
+    return QPointF();
 }
 
 int S57_RadarModificator::blockSize() const

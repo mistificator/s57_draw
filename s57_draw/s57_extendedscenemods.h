@@ -21,7 +21,7 @@ public:
     S57_BuildScene * builder() const;
     S57_ExtendedGraphicsScene * scene() const;
     static QGraphicsView * view(QPainter * _painter);
-    QGraphicsView * view();
+    QGraphicsView * view() const;
     virtual ~S57_ExtendedGraphicsSceneModificator();
 protected:
     virtual void onDrawForeground(QPainter *, const QRectF &);
@@ -89,6 +89,8 @@ public slots:
     void setRoiSize(int _d_radius, int _d_angle); // d_radius in 0 .. blockSize(), d_angle in 0 .. positionsCount()
     int roiRadius() const;
     int roiAngle() const;
+    void setRoiPos(QPointF);
+    QPointF roiPos() const;
     void viewportMoved();
     void addData(QVector<short> & block, int position);
     void updateRoi();

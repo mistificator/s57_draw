@@ -818,22 +818,15 @@ void S57_RadarModificator::viewportMoved()
 
     const int pos_count = ri->positionsCount();
     QList<int> angles;
-    QRectF r1(ct.x() - radius * aspect, ct.y() - radius, 2 * radius * aspect, 2 * radius);
-//    QPainterPath p1;
-//    p1.addEllipse(ct, radius * aspect, radius);
-//    p1.addRect(r1);
+    QPolygonF pr1(QRectF(ct.x() - radius * aspect, ct.y() - radius, 2 * radius * aspect, 2 * radius));
     QPen pen(Qt::yellow, 5);
     pen.setCosmetic(true);
     const double r2 = radius * radius * aspect * aspect;
     foreach (QGraphicsPolygonItem * coast_item, all_coasts)
     {
-//        QPainterPath p2;
-//        p2.addPolygon(coast_item->polygon());
-        QPolygonF intrsc = coast_item->polygon().intersected(QPolygonF(r1));
-//        if (p1.intersects(p2))
-        if (!intrsc.isEmpty())
+        const QPolygonF & poly = coast_item->polygon();
+        if (!poly.intersected(pr1).isEmpty())
         {
-            const QPolygonF & poly = coast_item->polygon();
             QPointF prev_pt = poly[0];
             int prev_index = 0;
             for (int i = 1; i < poly.count(); i++)

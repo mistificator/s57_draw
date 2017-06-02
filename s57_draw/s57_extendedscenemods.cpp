@@ -707,7 +707,8 @@ void S57_RadarModificator::addData(QVector<short> & block, int position)
         {
             float q, r;
             polarLinePointPrepare(line, q, r);
-            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f) // super resolution
+//            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f) // super resolution
+            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f) // super resolution
             {
                 block[qMin<float>(ri->blockSize() - 1, qMax<float>(0.0f, polarLinePoint(q, r, position + sub_pos)))] = 0xff;
             }
@@ -770,7 +771,8 @@ void S57_RadarModificator::viewportMoved()
     {
         if (ri_coast_item->scene())
         {
-            _scene->removeItem(ri_coast_item);
+            ri_coast_item->hide();
+//            _scene->removeItem(ri_coast_item);
         }
         delete ri_coast_item;
     }
@@ -783,7 +785,8 @@ void S57_RadarModificator::viewportMoved()
     {
         if (ri_visible_coast_item->scene())
         {
-            _scene->removeItem(ri_visible_coast_item);
+            ri_visible_coast_item->hide();
+//            _scene->removeItem(ri_visible_coast_item); // stupid monstrous instruction
         }
         delete ri_visible_coast_item;
     }

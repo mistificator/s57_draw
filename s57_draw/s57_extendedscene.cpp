@@ -126,7 +126,7 @@ void S57_ExtendedGraphicsScene::drawBackground(QPainter * _painter, const QRectF
     }
 }
 
-bool S57_ExtendedGraphicsScene::eventFilter(QObject * _obj, QEvent * _ev)
+bool S57_ExtendedGraphicsScene::eventFilter(QObject *, QEvent * _ev)
 {
     switch (_ev->type())
     {

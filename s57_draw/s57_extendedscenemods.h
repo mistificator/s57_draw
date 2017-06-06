@@ -81,7 +81,8 @@ public:
         RadarRaycastCoasts =    8,
         RadarForeground =       16,
         RadarSectorSelector =   32,
-        RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground | RadarSectorSelector};
+        RadarLimb =             64,
+        RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground | RadarSectorSelector | RadarLimb};
     void setFlags(int);
     int flags() const;
 public slots:

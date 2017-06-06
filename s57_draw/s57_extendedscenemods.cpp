@@ -121,7 +121,7 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
         PY1+=delta_Y;
         PY2+=delta_Y;
     }
-    dy_origin /= aspect;
+//    dy_origin /= aspect;
 
     _painter->save();
     _painter->resetTransform();
@@ -130,21 +130,21 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
     {
         if(dx_origin >= 0)
         {
-            sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
+            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
         }
         else
         {
-            sX= QString::number(int(qAbs(dx_origin)))+char(186)+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
+            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
 
         }
 
         if(dy_origin >= 0)
         {
-            sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
+            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
         }
         else
         {
-            sY= QString::number(int(qAbs(dy_origin)))+char(186)+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
+            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
 
         }
 
@@ -157,7 +157,8 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
         _painter->drawText(PtY2_adj,sY);
 
         dx_origin +=_grid_x_step;
-        dy_origin +=_grid_y_step / aspect;
+//        dy_origin +=_grid_y_step / aspect;
+        dy_origin +=_grid_y_step;
 
         PtX1+=delta_X;
         PtX2+=delta_X;
@@ -797,11 +798,18 @@ void S57_RadarModificator::viewportMoved()
 
     const double aspect = _scene->aspect();
 
+/*
     QPointF tl = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).topLeft());
     QPointF br = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).bottomRight());
     QPointF ct = view()->mapToScene(QRect(QPoint(), view()->viewport()->size()).center());
 
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
+*/
+
+    QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+
+    QPointF ct = r.center();
 
     const int sz = qMin(view()->viewport()->size().width(), view()->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
@@ -1000,11 +1008,17 @@ void S57_RadarModificator::updateRoi(QPointF _pt)
 
     const double aspect = scene()->aspect();
 
+/*
     QPointF tl = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).topLeft());
     QPointF br = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).bottomRight());
     QPointF ct = _view->mapToScene(QRect(QPoint(), _view->viewport()->size()).center());
 
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
+*/
+    QRectF r = _view->mapToScene(_view->viewport()->rect()).boundingRect();
+    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+
+    QPointF ct = r.center();
 
     double angle = ::atan2(_pt.y() - ct.y(), (_pt.x() - ct.x()) / aspect);
     double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) / (aspect * aspect) + 1e-15);
@@ -1080,75 +1094,81 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
     return false;
 }
 
-void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF & _rect)
+void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
 {
-    if ((radar_flags & RadarForeground) != RadarForeground)
-    {
-        return;
-    }
     _painter->save();
     _painter->resetTransform();
-
-    _painter->setPen(QPen(Qt::gray));
-    _painter->setBrush(QBrush(Qt::gray));
-
     QRect r = view(_painter)->viewport()->rect();
-    const float radius = r.height() / 2;
+    const float radius = qMin(r.width() / 2, r.height() / 2);
     const float center_x = r.width() / 2;
     const float center_y = r.height() / 2;
-
-    QPainterPath lpath;
-    lpath.moveTo(0, 0);
-    lpath.lineTo(center_x, 0);
-    lpath.arcTo(center_x - radius, 0, 2 * radius, 2 * radius, 90, 180);
-    lpath.lineTo(0, 2 * radius);
-    lpath.lineTo(0, 0);
-
-    QPainterPath rpath;
-    lpath.moveTo(r.width(), 0);
-    lpath.lineTo(center_x, 0);
-    lpath.arcTo(center_x - radius, 0, 2 * radius, 2 * radius, 90, -180);
-    lpath.lineTo(r.width(), 2 * radius);
-    lpath.lineTo(r.width(), 0);
-
-    _painter->drawPath(lpath);
-    _painter->drawPath(rpath);
-
-    QPen p;
-    p.setWidth(1);
-    p.setCosmetic(true);
-    _painter->setBrush(QBrush());
-    QFont f("Arial");
-    f.setPixelSize(10);
-    _painter->setFont(f);
-    const int count = 36;
-    const float step = 360.0 / count;
-    p.setStyle(Qt::DotLine);
-    p.setColor(Qt::darkGray);
-    _painter->setPen(p);
-    for (int i = 0; i < count / 3; i++)
+    if ((radar_flags & RadarForeground) == RadarForeground)
     {
-        const float angle = i * step * 3 * M_PI / 180.0;
-        const float _sin = ::sin(angle - M_PI / 2);
-        const float _cos = ::cos(angle - M_PI / 2);
-        _painter->drawLine(QPoint(center_x, center_y), QPoint(center_x + radius * _cos, center_y + radius * _sin));
+
+        _painter->setPen(QPen(Qt::gray));
+        _painter->setBrush(QBrush(Qt::gray));
+
+        QPainterPath lpath;
+        lpath.moveTo(0, 0);
+        lpath.lineTo(center_x, 0);
+        lpath.lineTo(center_x, center_y - radius);
+        lpath.arcTo(center_x - radius, center_y - radius, 2 * radius, 2 * radius, 90, 180);
+        lpath.lineTo(center_x, r.height());
+        lpath.lineTo(0, r.height());
+        lpath.lineTo(0, 0);
+
+        QPainterPath rpath;
+        rpath.moveTo(r.width(), 0);
+        rpath.lineTo(center_x, 0);
+        rpath.lineTo(center_x, center_y - radius);
+        rpath.arcTo(center_x - radius, center_y - radius, 2 * radius, 2 * radius, 90, -180);
+        rpath.lineTo(center_x, r.height());
+        rpath.lineTo(r.width(), r.height());
+        rpath.lineTo(r.width(), 0);
+
+        _painter->drawPath(lpath);
+        _painter->drawPath(rpath);
     }
-    p.setStyle(Qt::SolidLine);
-    p.setColor(Qt::white);
-    _painter->setPen(p);
-    _painter->setBrush(QBrush(qRgba(0, 0, 0, 80)));
-    const float text_offset_x = -0.02 * radius;
-    const float text_offset_y = 0.01 * radius;
-    const float tick_offset = 1.015 * radius;
-    const float label_offset = 1.045 * radius;
-    for (int i = 0; i < count; i++)
+
+    if ((radar_flags & RadarLimb) == RadarLimb)
     {
-        const float angle = i * step * M_PI / 180.0;
-        const float _sin = ::sin(angle - M_PI / 2);
-        const float _cos = ::cos(angle - M_PI / 2);
-        _painter->drawLine(QPoint(center_x + tick_offset * _cos, center_y + tick_offset * _sin), QPoint(center_x + radius * _cos, center_y + radius * _sin));
-        _painter->drawText(QPoint(center_x + label_offset * _cos + text_offset_x, center_y + label_offset * _sin + text_offset_y), QString::number(i * step));
+        QPen p;
+        p.setWidth(1);
+        p.setCosmetic(true);
+        _painter->setBrush(QBrush());
+        QFont f("Arial");
+        f.setPixelSize(10);
+        _painter->setFont(f);
+        const int count = 36;
+        const float step = 360.0 / count;
+        p.setStyle(Qt::DotLine);
+        p.setColor(Qt::darkGray);
+        _painter->setPen(p);
+        for (int i = 0; i < count / 3; i++)
+        {
+            const float angle = i * step * 3 * M_PI / 180.0;
+            const float _sin = ::sin(angle - M_PI / 2);
+            const float _cos = ::cos(angle - M_PI / 2);
+            _painter->drawLine(QPoint(center_x, center_y), QPoint(center_x + radius * _cos, center_y + radius * _sin));
+        }
+        p.setStyle(Qt::SolidLine);
+        p.setColor(Qt::white);
+        _painter->setPen(p);
+        _painter->setBrush(QBrush(qRgba(0, 0, 0, 80)));
+        const float text_offset_x = -0.02 * radius;
+        const float text_offset_y = 0.01 * radius;
+        const float tick_offset = 1.015 * radius;
+        const float label_offset = 1.045 * radius;
+        for (int i = 0; i < count; i++)
+        {
+            const float angle = i * step * M_PI / 180.0;
+            const float _sin = ::sin(angle - M_PI / 2);
+            const float _cos = ::cos(angle - M_PI / 2);
+            _painter->drawLine(QPoint(center_x + tick_offset * _cos, center_y + tick_offset * _sin), QPoint(center_x + radius * _cos, center_y + radius * _sin));
+            _painter->drawText(QPoint(center_x + label_offset * _cos + text_offset_x, center_y + label_offset * _sin + text_offset_y), QString::number(i * step));
+        }
     }
+
     _painter->restore();
 }
 

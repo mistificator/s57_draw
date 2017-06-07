@@ -3,4 +3,11 @@
         <file>s57_draw.qm</file>
         <file>scrollbar.css</file>
     </qresource>
+    <qresource prefix="/pictures">
+        <file>button.png</file>
+        <file>down.png</file>
+        <file>left.png</file>
+        <file>right.png</file>
+        <file>up.png</file>
+    </qresource>
 </RCC>

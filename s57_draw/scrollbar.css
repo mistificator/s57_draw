@@ -1,44 +1,52 @@
 QScrollBar:horizontal {
     border: 1px solid gray;
-    height: 30px;
-    margin: 0px 84px 0 0px;
+    height: 38px;
+    margin: 0px 80px 0 0px;
 }
 
 
 
 QScrollBar::add-line:horizontal {
-    width: 40px;
+    width: 38px;
     subcontrol-position: right;
     subcontrol-origin: margin;
+   image: url(:/pictures/right.png)contain;
+      border: 1px solid darkGrey;
 }
 
 QScrollBar::sub-line:horizontal {
-    width: 40px;
+    width: 38px;
     subcontrol-position: top right;
     subcontrol-origin: margin;
     position: absolute;
     right: 40px;
+    image: url(:/pictures/left.png)contain;
+   border: 1px solid darkGrey;
 }
 
 QScrollBar:vertical {
     border: 1px solid gray;
-    width: 30px;
+    width: 38px;
     margin: 0px 0px 80px 0px;
 }
 
 
 QScrollBar::add-line:vertical {
-    height: 40px;
+    height: 38px;
     subcontrol-position: bottom;
     subcontrol-origin: margin;
+    image: url(:/pictures/down.png) contain;
+     border: 1px solid darkGrey;
 }
 
 QScrollBar::sub-line:vertical {
-    height: 40px;
+    height: 38px;
     subcontrol-position: bottom right;
     subcontrol-origin: margin;
     position: absolute;
-    bottom: 40px;
+    bottom: 39px;
+    image: url(:/pictures/up.png)contain;
+     border: 1px solid darkGrey;
 }
 
 

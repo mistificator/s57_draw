@@ -819,7 +819,7 @@ void S57_DrawWindow::setRadarFlags()
                  (ui->actionRadarSector->isChecked() ? S57_RadarModificator::RadarSector | S57_RadarModificator::RadarSectorSelector:0) |
                  (ui->actionRadarCoasts->isChecked() ? S57_RadarModificator::RadarCoasts:0 )|
                  (ui->actionRadarRaycastCoasts->isChecked() ? S57_RadarModificator::RadarRaycastCoasts:0)   |
-                 (ui->actionRadarForeground->isChecked() ? S57_RadarModificator::RadarForeground:0)
+                 (ui->actionRadarForeground->isChecked() ? S57_RadarModificator::RadarForeground | S57_RadarModificator::RadarLimb:0)
                  );
 }
 

@@ -130,21 +130,21 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
     {
         if(dx_origin >= 0)
         {
-            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"E";
+            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).rightJustified(2, '0')+"E";
         }
         else
         {
-            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).leftJustified(2, '0')+"W";
+            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).rightJustified(2, '0')+"W";
 
         }
 
         if(dy_origin >= 0)
         {
-            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"S";
+            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).rightJustified(2, '0')+"S";
         }
         else
         {
-            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).leftJustified(2, '0')+"N";
+            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).rightJustified(2, '0')+"N";
 
         }
 
@@ -572,19 +572,13 @@ void S57_RadarModificator::setRoiPos(QPointF pt)
 {
     if (view())
     {
-        pt = view()->mapFromScene(pt);
-        roi_point = pt;
-        updateRoi(roi_point);
+        updateRoi(roi_point = pt);
     }
 }
 
 QPointF S57_RadarModificator::roiPos() const
 {
-    if (view())
-    {
-        return view()->mapToScene(roi_point.toPoint());
-    }
-    return QPointF();
+    return roi_point;
 }
 
 int S57_RadarModificator::blockSize() const
@@ -809,7 +803,7 @@ void S57_RadarModificator::viewportMoved()
     QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
     const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
 
-    QPointF ct = r.center();
+    QPointF ct = radarCenter();
 
     const int sz = qMin(view()->viewport()->size().width(), view()->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
@@ -1018,7 +1012,7 @@ void S57_RadarModificator::updateRoi(QPointF _pt)
     QRectF r = _view->mapToScene(_view->viewport()->rect()).boundingRect();
     const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
 
-    QPointF ct = r.center();
+    QPointF ct = radarCenter();
 
     double angle = ::atan2(_pt.y() - ct.y(), (_pt.x() - ct.x()) / aspect);
     double length = ::sqrtf((_pt.y() - ct.y()) * (_pt.y() - ct.y()) + (_pt.x() - ct.x()) * (_pt.x() - ct.x()) / (aspect * aspect) + 1e-15);
@@ -1219,6 +1213,22 @@ int S57_RadarModificator::flags() const
 {
     return radar_flags;
 }
+
+void S57_RadarModificator::setCustomRadarCenter(QPointF ct)
+{
+    custom_ct = ct;
+}
+
+QPointF S57_RadarModificator::radarCenter() const
+{
+    QGraphicsView * _view = view();
+    if (!_view)
+    {
+        return custom_ct;
+    }
+    return custom_ct.isNull() ? _view->mapToScene(_view->viewport()->rect()).boundingRect().center() : custom_ct;
+}
+
 // ---------------------------------------------------------------------------------------------------------
 
 S57_TargetModificator::S57_TargetModificator(): QObject(), S57_ExtendedGraphicsSceneModificator()

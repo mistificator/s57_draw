@@ -85,6 +85,9 @@ public:
         RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground | RadarSectorSelector | RadarLimb};
     void setFlags(int);
     int flags() const;
+
+    void setCustomRadarCenter(QPointF);
+    QPointF radarCenter() const;
 public slots:
     void setMetrics(int _block_size, int _positions_count);
     void setRoiSize(int _d_radius, int _d_angle); // d_radius in 0 .. blockSize(), d_angle in 0 .. positionsCount()
@@ -110,6 +113,7 @@ private:
     QMap<double, QList<QGraphicsLineItem *> > ri_sorted_coasts;
     QList<QGraphicsLineItem *> ri_unsorted_coasts, ri_visible_coasts;
     QList<QLineF> ri_sec_lines;
+    QPointF custom_ct;
     int radar_flags;
     int d_radius, d_angle;
     void updateRoi(QPointF);

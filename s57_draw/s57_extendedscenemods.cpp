@@ -1077,9 +1077,9 @@ void S57_RadarModificator::updateRoi(QPointF & _pt)
     rpi->setPos(ct);
 
     roi_rect.setLeft(a1 + M_PI / 2);
-    roi_rect.setTop(a2 + M_PI / 2);
-    roi_rect.setBottom(l1 * ri->blockSize() / radius);
-    roi_rect.setRight(l2 * ri->blockSize() / radius);
+    roi_rect.setRight(a2 + M_PI / 2);
+    roi_rect.setTop(l1 * ri->blockSize() / radius);
+    roi_rect.setBottom(l2 * ri->blockSize() / radius);
 }
 
 bool S57_RadarModificator::onEvent(QEvent * _ev)
@@ -1200,7 +1200,7 @@ QRectF S57_RadarModificator::roiRect() const
 
 QImage S57_RadarModificator::roi() const
 {
-    return ri->roi(roi_rect.left(), roi_rect.top(), roi_rect.bottom(), roi_rect.right());
+    return ri->roi(roi_rect.left(), roi_rect.right(), roi_rect.top(), roi_rect.bottom());
 }
 
 bool S57_RadarModificator::eventFilter(QObject * _obj, QEvent * _ev)

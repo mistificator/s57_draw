@@ -68,6 +68,34 @@ void S57_ExtendedGraphicsSceneModificator::onRemoveMod() {}
 
 // -----------------------------------------------------------------------------------------------
 
+QString S57_GridModificator::xLabel(double val)
+{
+    QString sX;
+    if(val >= 0)
+    {
+        sX= QString::number(int(qAbs(val)))+"°"+QString::number(int(qAbs((-val+int(val))*100)) * 60 / 100).rightJustified(2, '0')+"E";
+    }
+    else
+    {
+        sX= QString::number(int(qAbs(val)))+"°"+QString::number(int(qAbs((-val+int(val))*100)) * 60 / 100).rightJustified(2, '0')+"W";
+    }
+    return sX;
+}
+
+QString S57_GridModificator::yLabel(double val)
+{
+    QString sY;
+    if(val >= 0)
+    {
+        sY= QString::number(int(qAbs(val)))+"°"+QString::number(int(qAbs((-val+int(val))*100)) * 60 / 100).rightJustified(2, '0')+"S";
+    }
+    else
+    {
+        sY= QString::number(int(qAbs(val)))+"°"+QString::number(int(qAbs((-val+int(val))*100)) * 60 / 100).rightJustified(2, '0')+"N";
+    }
+    return sY;
+}
+
 void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _rect)
 {
     QGraphicsView * _view = view(_painter);
@@ -76,7 +104,7 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
         return;
     }
 
-    const double aspect = scene()->aspect();
+//    const double aspect = scene()->aspect();
 
     _painter->setPen(QPen(Qt::black, 0, Qt::DotLine));
     _painter->setFont(QFont("Arial", 12));
@@ -128,25 +156,8 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
 
     for (int _i=0; _i<grid_count_hint;_i++)
     {
-        if(dx_origin >= 0)
-        {
-            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).rightJustified(2, '0')+"E";
-        }
-        else
-        {
-            sX= QString::number(int(qAbs(dx_origin)))+"°"+QString::number(int(qAbs((-dx_origin+int(dx_origin))*100))).rightJustified(2, '0')+"W";
-
-        }
-
-        if(dy_origin >= 0)
-        {
-            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).rightJustified(2, '0')+"S";
-        }
-        else
-        {
-            sY= QString::number(int(qAbs(dy_origin)))+"°"+QString::number(int(qAbs((-dy_origin+int(dy_origin))*100))).rightJustified(2, '0')+"N";
-
-        }
+        sX = xLabel(dx_origin);
+        sY = yLabel(dy_origin);
 
         _painter->drawText(_view->mapFromScene(PtX1),sX);
         _painter->drawText(_view->mapFromScene(PtX2),sX);
@@ -475,7 +486,7 @@ private:
         dst.fill(0);
 
         img = QImage(w, h, QImage::Format_ARGB32);
-        img.fill(QColor(0, 0, 0, 0));
+        img.fill(QColor(0, 0, 0, 0).rgba());
         setImage(& img);
 
         map_dst.resize(block_size * positions_count);
@@ -572,7 +583,8 @@ void S57_RadarModificator::setRoiPos(QPointF pt)
 {
     if (view())
     {
-        updateRoi(roi_point = pt);
+        roi_point = pt;
+        updateRoi(roi_point);
     }
 }
 
@@ -614,6 +626,8 @@ void S57_RadarModificator::onAddMod()
 {
     view()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+
+    roi_point = scene()->sceneRect().center();
 
     scene()->addItem(ri);
     scene()->addItem(rpi);
@@ -991,7 +1005,7 @@ void S57_RadarModificator::viewportMoved()
     qDebug() << log.join("\n");
 }
 
-void S57_RadarModificator::updateRoi(QPointF _pt)
+void S57_RadarModificator::updateRoi(QPointF & _pt)
 {
     QGraphicsView * _view = view();
 
@@ -1033,6 +1047,8 @@ void S57_RadarModificator::updateRoi(QPointF _pt)
     const double l2 = length + r_step * radius;
     const double a1 = angle - a_step;
     const double a2 = angle + a_step;
+
+    _pt = QPointF(ct.x() + ((l1 + l2) / 2) * ::cos((a1 + a2) / 2) * aspect, ct.y() + ((l1 + l2) / 2) * ::sin((a1 + a2) / 2));
 /*
     QPolygonF rpi_poly;
     rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
@@ -1079,7 +1095,8 @@ bool S57_RadarModificator::onEvent(QEvent * _ev)
         {
             if ((radar_flags & RadarSector) == RadarSector)
             {
-                updateRoi(roi_point = _pt);
+                roi_point = _pt;
+                updateRoi(roi_point);
             }
         }
         break;
@@ -1446,4 +1463,60 @@ void S57_TargetModificator::renderTargets()
     {
         renderTarget(& target);
     }
+}
+
+
+
+// ---------------------------------------------------------------------------------------------------------
+
+
+
+
+S57_DirectionArrowModificator::S57_DirectionArrowModificator(): S57_ExtendedGraphicsSceneModificator(), dir(0), c(Qt::yellow)
+{
+
+}
+
+void S57_DirectionArrowModificator::setDirection(double _d)
+{
+    dir = _d;
+}
+
+double S57_DirectionArrowModificator::direction() const
+{
+    return dir;
+}
+
+void S57_DirectionArrowModificator::setColor(QColor _c)
+{
+    c = _c;
+}
+
+QColor S57_DirectionArrowModificator::color() const
+{
+    return c;
+}
+
+void S57_DirectionArrowModificator::onDrawForeground(QPainter * _painter, const QRectF &)
+{
+    _painter->save();
+    _painter->resetTransform();
+    const QRect vrect = view(_painter)->viewport()->rect();
+    const double r = qMin(vrect.width() / 2, vrect.height() / 2);
+    const QPointF ct = vrect.center();
+
+    QPolygonF poly;
+    const int sz = 7;
+    poly
+            << QPointF(ct.x() + (r - sz) * ::cos(dir * M_PI / 180.0 - M_PI / 2), ct.y() + (r - sz) * ::sin(dir * M_PI / 180.0 - M_PI / 2))
+            << QPointF(ct.x() + (r + sz) * ::cos((dir + 2) * M_PI / 180.0 - M_PI / 2), ct.y() + (r + sz) * ::sin((dir + 2) * M_PI / 180.0 - M_PI / 2))
+            << QPointF(ct.x() + (r + sz) * ::cos((dir - 2) * M_PI / 180.0 - M_PI / 2), ct.y() + (r + sz) * ::sin((dir - 2) * M_PI / 180.0 - M_PI / 2));
+
+    QPen pen(c);
+    pen.setCosmetic(true);
+    _painter->setPen(pen);
+    _painter->setBrush(c);
+    _painter->drawPolygon(poly);
+
+    _painter->restore();
 }

@@ -4,66 +4,66 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="s57_drawwindow.cpp" line="350"/>
+        <location filename="s57_drawwindow.cpp" line="395"/>
         <source>Open S57 chart</source>
         <translation>Открыть карту S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="362"/>
+        <location filename="s57_drawwindow.cpp" line="407"/>
         <source>Add S57 chart</source>
         <translation>Добавить карту S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="371"/>
-        <location filename="s57_drawwindow.cpp" line="382"/>
+        <location filename="s57_drawwindow.cpp" line="416"/>
+        <location filename="s57_drawwindow.cpp" line="427"/>
         <source>Open folder with S57 charts</source>
         <translation>Открыть папку с картами S57</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="186"/>
-        <location filename="s57_drawwindow.cpp" line="596"/>
+        <location filename="s57_drawwindow.cpp" line="190"/>
+        <location filename="s57_drawwindow.cpp" line="635"/>
         <source>Stop</source>
         <translation>Стоп</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="93"/>
+        <location filename="s57_drawwindow.cpp" line="96"/>
         <source>Radar sector</source>
         <translation>Сектор радара</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="187"/>
+        <location filename="s57_drawwindow.cpp" line="191"/>
         <source>Scanning folder</source>
         <translation>Поиск карт в папке</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="429"/>
+        <location filename="s57_drawwindow.cpp" line="468"/>
         <source>miles</source>
         <translation>миль</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="521"/>
+        <location filename="s57_drawwindow.cpp" line="560"/>
         <source>Save visible area</source>
         <translation>Сохранить видимую область</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="528"/>
-        <location filename="s57_drawwindow.cpp" line="547"/>
+        <location filename="s57_drawwindow.cpp" line="567"/>
+        <location filename="s57_drawwindow.cpp" line="586"/>
         <source>Nothing to export</source>
         <translation>Экспорт невозможен</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="528"/>
-        <location filename="s57_drawwindow.cpp" line="547"/>
+        <location filename="s57_drawwindow.cpp" line="567"/>
+        <location filename="s57_drawwindow.cpp" line="586"/>
         <source>Chart is empty</source>
         <translation>Карта пуста</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="540"/>
+        <location filename="s57_drawwindow.cpp" line="579"/>
         <source>Save whole chart</source>
         <translation>Сохранить карту целиком</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="597"/>
+        <location filename="s57_drawwindow.cpp" line="636"/>
         <source>Rendering symbols</source>
         <translation>Сохранение символов</translation>
     </message>
@@ -358,22 +358,22 @@
         <translation></translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="564"/>
+        <location filename="s57_drawwindow.cpp" line="603"/>
         <source>Question</source>
         <translation>Вопрос</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="564"/>
+        <location filename="s57_drawwindow.cpp" line="603"/>
         <source>All maps will be closed. Continue?</source>
         <translation>Все карты будут закрыты. Продолжить?</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="564"/>
+        <location filename="s57_drawwindow.cpp" line="603"/>
         <source>Yes</source>
         <translation>Да</translation>
     </message>
     <message>
-        <location filename="s57_drawwindow.cpp" line="564"/>
+        <location filename="s57_drawwindow.cpp" line="603"/>
         <source>No</source>
         <translation>Нет</translation>
     </message>

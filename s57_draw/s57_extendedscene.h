@@ -3,7 +3,7 @@
 
 #if defined(_WIN32) && defined(LIB_S57_EXT_DLL) && !defined(LIB_S57_EXT_EXPORT)
     #define LIB_S57_EXT_EXPORT __declspec(dllexport)
-#else
+#elif !defined(LIB_S57_EXT_EXPORT)
     #define LIB_S57_EXT_EXPORT
 #endif
 

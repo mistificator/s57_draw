@@ -3,7 +3,7 @@
 
 #if defined(_WIN32) && defined(LIB_S57_EXT_DLL) && !defined(LIB_S57_EXT_EXPORT)
     #define LIB_S57_EXT_EXPORT __declspec(dllexport)
-#else
+#elif !defined(LIB_S57_EXT_EXPORT)
     #define LIB_S57_EXT_EXPORT
 #endif
 
@@ -40,6 +40,9 @@ private:
 
 class LIB_S57_EXT_EXPORT S57_GridModificator: public S57_ExtendedGraphicsSceneModificator
 {
+public:
+    static QString xLabel(double val);
+    static QString yLabel(double val);
 protected:
     virtual void onDrawForeground(QPainter * _painter, const QRectF & _rect);
 };
@@ -116,7 +119,7 @@ private:
     QPointF custom_ct;
     int radar_flags;
     int d_radius, d_angle;
-    void updateRoi(QPointF);
+    void updateRoi(QPointF &);
     void polarLinePointPrepare(const QLineF & line, float & q, float & r);
     float polarLinePoint(float q, float r, float t);
     float polarLinePoint(const QLineF & line, float t);
@@ -162,6 +165,21 @@ protected:
     virtual void onRemoveMod();
 private:
     QList<Target> _targets;
+};
+
+class LIB_S57_EXT_EXPORT S57_DirectionArrowModificator: public S57_ExtendedGraphicsSceneModificator
+{
+public:
+    S57_DirectionArrowModificator();
+    void setDirection(double); // degree, cw
+    double direction() const;
+    void setColor(QColor);
+    QColor color() const;
+protected:
+    virtual void onDrawForeground(QPainter *, const QRectF &);
+private:
+    double dir;
+    QColor c;
 };
 
 #endif // S57_EXTENDEDSCENEMODS_H

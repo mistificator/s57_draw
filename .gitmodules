@@ -1,4 +1,4 @@
 [submodule "gdal"]
 	path = gdal
 	url = https://github.com/OSGeo/gdal.git
-	branch = f0d54148-0727-0410-94bb-9a71ac55c965
+	branch = https://svn.osgeo.org/gdal/branches/2.1@39066 f0d54148-0727-0410-94bb-9a71ac55c965

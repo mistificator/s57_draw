@@ -18,7 +18,7 @@ HEADERS  +=\
     s57_extendedscenemods.h
 
 DEFINES += \
-        LIB_S57_DLL
+        LIB_S57_EXT_DLL
 
 win32:LIBS +=\
         ../s57_bin/lib_prti99.lib \

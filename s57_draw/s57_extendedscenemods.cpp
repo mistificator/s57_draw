@@ -350,7 +350,13 @@ class RadarItem: public QFixedPixmapItemEx
 public:
     RadarItem(QGraphicsItem *parent = 0): QFixedPixmapItemEx(parent)
     {
+        roi_enabled = true;
         setMetrics(8192, 4096);
+        colors[0] = 0;
+        for (int c = 1; c < 256; c++)
+        {
+            colors[c] = QColor::fromHsv(120, 255 - c, qMin<short>(c, 255)).rgba();
+        }
     }
     ~RadarItem() {}
     void setMetrics(int _block_size, int _positions_count)
@@ -418,21 +424,24 @@ public:
         {
             sec_img = QImage(sz, QImage::Format_RGB32);
         }
-        unsigned int * img_ptr = (unsigned int *)sec_img.bits();
-        for (int t = _start_angle; t < _stop_angle1; t++)
+        if (roi_enabled)
         {
-            const short * _src = src.constData() + t * block_size + start_distance;
-            for (int v = start_distance; v < stop_distance; v++)
+            unsigned int * img_ptr = (unsigned int *)sec_img.bits();
+            for (int t = _start_angle; t < _stop_angle1; t++)
             {
-                * img_ptr++ = colorConvert(* _src++);
+                const short * _src = src.constData() + t * block_size + start_distance;
+                for (int v = start_distance; v < stop_distance; v++)
+                {
+                    * img_ptr++ = colors[* _src++ & 0xff];
+                }
             }
-        }
-        for (int t = 0; t < _stop_angle2; t++)
-        {
-            const short * _src = src.constData() + t * block_size + start_distance;
-            for (int v = start_distance; v < stop_distance; v++)
+            for (int t = 0; t < _stop_angle2; t++)
             {
-                * img_ptr++ = colorConvert(* _src++);
+                const short * _src = src.constData() + t * block_size + start_distance;
+                for (int v = start_distance; v < stop_distance; v++)
+                {
+                    * img_ptr++ = colors[* _src++ & 0xff];
+                }
             }
         }
         QPoint center = sec_img.rect().center();
@@ -445,6 +454,14 @@ public:
     {
         return QLineF(QPointF(), map_src[block_size * position_number + block_size - 1]);
     }
+    void setRoiEnabled(bool state)
+    {
+        roi_enabled = state;
+    }
+    bool roiEnabled() const
+    {
+        return roi_enabled;
+    }
 private:
     int block_size, positions_count;
     QVector<QPointF> map_src;
@@ -452,6 +469,8 @@ private:
     QVector<short> src, dst;
     QImage img;
     mutable QImage sec_img;
+    QRgb colors[256];
+    bool roi_enabled;
     void createSrcMap()
     {
         qDebug() << "createSrcMap" << block_size << positions_count;
@@ -522,23 +541,22 @@ private:
             dst.fill(0);
         }
         ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src.data()[0]));
-        const int * offset_ptr = map_dst.constData() + block_size * position;
-        const short * block_ptr = block.constData();
-        short * dst_ptr = dst.data();
-        unsigned int * img_ptr = (unsigned int *)img.bits();
-        for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
+        if (roi_enabled)
         {
-            short & _dst = dst_ptr[* offset_ptr];
-            if (_dst < * block_ptr)
+            const int * offset_ptr = map_dst.constData() + block_size * position;
+            const short * block_ptr = block.constData();
+            short * dst_ptr = dst.data();
+            unsigned int * img_ptr = (unsigned int *)img.bits();
+            for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
             {
-                _dst = * block_ptr;
+                short & _dst = dst_ptr[* offset_ptr];
+                if (_dst < * block_ptr)
+                {
+                    _dst = * block_ptr;
+                }
+                img_ptr[* offset_ptr] = colors[_dst & 0xff];
             }
-            img_ptr[* offset_ptr] = colorConvert(_dst);
         }
-    }
-    static QRgb colorConvert(short data)
-    {
-        return QColor::fromHsv(120, 255 - data, qMin<short>(data, 255)).rgba();
     }
 };
 
@@ -707,7 +725,7 @@ float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
     return polarLinePoint(q, r, t);
 }
 
-void S57_RadarModificator::addData(QVector<short> & block, int position)
+void S57_RadarModificator::addData(QVector<short> & block, int position, const unsigned char coast_color)
 {
     foreach (QLineF line, ri_sec_lines)
     {
@@ -719,7 +737,7 @@ void S57_RadarModificator::addData(QVector<short> & block, int position)
 //            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f) // super resolution
             for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f) // super resolution
             {
-                block[qMin<float>(ri->blockSize() - 1, qMax<float>(0.0f, polarLinePoint(q, r, position + sub_pos)))] = 0xff;
+                block[qMin<float>(ri->blockSize() - 1, qMax<float>(0.0f, polarLinePoint(q, r, position + sub_pos)))] = coast_color;
             }
         }
     }
@@ -1223,6 +1241,7 @@ void S57_RadarModificator::setFlags(int f)
     radar_flags = f;
     ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
     rpi->setVisible((radar_flags & RadarSectorSelector) == RadarSectorSelector);
+    ri->setRoiEnabled((radar_flags & RadarSector) == RadarSector);
     viewportMoved();
 }
 

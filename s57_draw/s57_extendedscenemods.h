@@ -99,7 +99,7 @@ public slots:
     void setRoiPos(QPointF);
     QPointF roiPos() const;
     void viewportMoved();
-    void addData(QVector<short> & block, int position);
+    void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xcf);
     void updateRoi();
 protected:
     virtual void onAddMod();

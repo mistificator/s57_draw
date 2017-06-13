@@ -538,7 +538,7 @@ private:
     }
     static QRgb colorConvert(short data)
     {
-        return qRgba(0, 0xff & data, 0, data > 0 ? 255 : 0);
+        return QColor::fromHsv(120, 255 - data, qMin<short>(data, 255)).rgba();
     }
 };
 

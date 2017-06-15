@@ -143,11 +143,12 @@ public:
         QList<QPointF> path;
         QPointF pos;
         float angle; // degrees, ccw
+        bool visible;
         int numberValue;
         QFont numberFont;
         QColor numberColor;
         bool numberVisible;
-        Target(): angle(0), numberVisible(false), numberColor(Qt::white), numberValue(1) {}
+        Target(): angle(0), numberVisible(false), numberColor(Qt::white), numberValue(1), visible(true) {}
     private:
         friend class S57_TargetModificator;
         QFixedPixmapItemEx * pixmap;

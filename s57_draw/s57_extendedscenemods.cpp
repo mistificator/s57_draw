@@ -1492,8 +1492,9 @@ void S57_TargetModificator::renderTarget(const Target * target)
         target->pixmap->setPos(target->pos);
         target->pixmap->setScreenSize(px.size());
         target->pixmap->setPixmap(px);
+        target->pixmap->setVisible(target->visible);
     }
-    if (target->numberVisible && target->number)
+    if (target->number)
     {
         target->number_px.fill(QColor(0, 0, 0, 0));
         QPainter p(& target->number_px);
@@ -1512,6 +1513,7 @@ void S57_TargetModificator::renderTarget(const Target * target)
         }
         target->number->setPixmap(target->number_px);
         target->number->setPos(target->pos);
+        target->number->setVisible(target->numberVisible);
     }
 }
 

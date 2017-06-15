@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QScrollBar>
 #include <QTime>
+#include <QPainter>
 #include <cmath>
 #include "cpl_port.h"
 
@@ -353,9 +354,13 @@ public:
         roi_enabled = true;
         setMetrics(8192, 4096);
         colors[0] = 0;
-        for (int c = 1; c < 256; c++)
+        for (int c = 1; c < 192; c++)
         {
-            colors[c] = QColor::fromHsv(120, 255 - c, qMin<short>(c, 255)).rgba();
+            colors[c] = QColor::fromHsv(120, 255, c * 255 / 192).rgba();
+        }
+        for (int c = 192; c < 256; c++)
+        {
+            colors[c] = QColor::fromHsv(120, (256 - c) * 255 / 64, 255).rgba();
         }
     }
     ~RadarItem() {}
@@ -727,17 +732,20 @@ float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
 
 void S57_RadarModificator::addData(QVector<short> & block, int position, const unsigned char coast_color)
 {
+    const int block_size = ri->blockSize();
     foreach (QLineF line, ri_sec_lines)
     {
         QPointF pt;
-        if (line.intersect(QLineF(QPoint(1, position), QPointF(ri->blockSize(), position)), & pt) == QLineF::BoundedIntersection)
+        if (line.intersect(QLineF(QPoint(1, position), QPointF(block_size, position)), & pt) == QLineF::BoundedIntersection)
         {
             float q, r;
             polarLinePointPrepare(line, q, r);
-//            for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.01f) // super resolution
             for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f) // super resolution
             {
-                block[qMin<float>(ri->blockSize() - 1, qMax<float>(0.0f, polarLinePoint(q, r, position + sub_pos)))] = coast_color;
+                const float plp = polarLinePoint(q, r, position + sub_pos);
+                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp))] = coast_color;
+                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp + 1))] = coast_color;
+                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp - 1))] = coast_color;
             }
         }
     }
@@ -1294,10 +1302,15 @@ S57_TargetModificator::Target & S57_TargetModificator::addTarget(QPointF pos, QS
     target.pixmap = new QFixedPixmapItemEx();
     target.pixmap->setToolTip(name);
     target.pixmap->setZValue(1000000);
-    if (isActive())
-    {
-        scene()->addItem(target.pixmap);
-    }
+
+    target.number_px = QPixmap(32, 32);
+    target.number_px.fill(QColor(0, 0, 0, 0));
+    target.number = new QFixedPixmapItemEx();
+    target.number->setPixmap(target.number_px);
+    target.number->setScreenSize(target.number_px.size());
+    target.numberFont = QFont("Arial", 8);
+    target.number->setZValue(target.pixmap->zValue() + 1);
+
     _targets << target;
     return _targets.back();
 }
@@ -1345,6 +1358,14 @@ void S57_TargetModificator::removeTarget(const Target * target)
 //                delete i->pixmap; // memory leak here, crash if uncomment // https://bugreports.qt.io/browse/QTBUG-50691
                 i->pixmap = 0;
             }
+            if (i->number)
+            {
+                if (i->number->scene())
+                {
+                    scene()->removeItem(i->number);
+                }
+                i->number = 0;
+            }
             _targets.erase(i);
             return;
         }
@@ -1388,6 +1409,15 @@ void S57_TargetModificator::clear()
             delete target.pixmap;
             target.pixmap = 0;
         }
+        if (target.number)
+        {
+            if (target.number->scene())
+            {
+                scene()->removeItem(target.number);
+            }
+            delete target.number;
+            target.number = 0;
+        }
     }
     _targets.clear();
 }
@@ -1404,16 +1434,6 @@ const QList<S57_TargetModificator::Target> & S57_TargetModificator::targets() co
 
 void S57_TargetModificator::onAddMod()
 {
-    foreach (Target target, _targets)
-    {
-        if (target.pixmap)
-        {
-            if (!target.pixmap->scene())
-            {
-                scene()->addItem(target.pixmap);
-            }
-        }
-    }
     renderTargets();
 }
 
@@ -1426,6 +1446,13 @@ void S57_TargetModificator::onRemoveMod()
             if (target.pixmap->scene())
             {
                 scene()->removeItem(target.pixmap);
+            }
+        }
+        if (target.number)
+        {
+            if (target.number->scene())
+            {
+                scene()->removeItem(target.number);
             }
         }
     }
@@ -1458,18 +1485,34 @@ void S57_TargetModificator::renderTarget(const Target * target)
         p.setPen(pen);
         p.setBrush(QBrush(target->color));
         p.drawPolygon(geometry);
-        if (target->pixmap)
+        if (isActive() && !target->pixmap->scene())
         {
-            if (isActive() && !target->pixmap->scene())
-            {
-                scene()->addItem(target->pixmap);
-            }
-            target->pixmap->setPos(target->pos);
-            target->pixmap->setScreenSize(px.size());
-            target->pixmap->setPixmap(px);
+            scene()->addItem(target->pixmap);
         }
+        target->pixmap->setPos(target->pos);
+        target->pixmap->setScreenSize(px.size());
+        target->pixmap->setPixmap(px);
     }
-
+    if (target->numberVisible && target->number)
+    {
+        target->number_px.fill(QColor(0, 0, 0, 0));
+        QPainter p(& target->number_px);
+        p.setFont(target->numberFont);
+        p.setPen(target->numberColor);
+        QRect frame_rect(0, 0, 12, 12);
+        QRect text_rect(1, 1, 10, 10);
+        const float angle = (target->angle + 90) * M_PI / 180;
+        frame_rect.moveCenter(QPoint(16 + 8 * ::cos(angle), 16 + 8 * ::sin(angle)));
+        text_rect.moveCenter(QPoint(16 + 8 * ::cos(angle), 16 + 8 * ::sin(angle)));
+        p.drawRect(frame_rect);
+        p.drawText(text_rect, Qt::AlignCenter, QString::number(target->numberValue));
+        if (isActive() && !target->number->scene())
+        {
+            scene()->addItem(target->number);
+        }
+        target->number->setPixmap(target->number_px);
+        target->number->setPos(target->pos);
+    }
 }
 
 void S57_TargetModificator::renderTargets()

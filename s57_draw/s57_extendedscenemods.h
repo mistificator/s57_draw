@@ -9,6 +9,8 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsView>
+#include <QGraphicsSimpleTextItem>
+#include <QPixmap>
 
 class S57_BuildScene;
 class S57_ExtendedGraphicsScene;
@@ -99,7 +101,7 @@ public slots:
     void setRoiPos(QPointF);
     QPointF roiPos() const;
     void viewportMoved();
-    void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xcf);
+    void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xaf);
     void updateRoi();
 protected:
     virtual void onAddMod();
@@ -141,10 +143,16 @@ public:
         QList<QPointF> path;
         QPointF pos;
         float angle; // degrees, ccw
-        Target(): angle(0) {}
+        int numberValue;
+        QFont numberFont;
+        QColor numberColor;
+        bool numberVisible;
+        Target(): angle(0), numberVisible(false), numberColor(Qt::white), numberValue(1) {}
     private:
         friend class S57_TargetModificator;
         QFixedPixmapItemEx * pixmap;
+        QFixedPixmapItemEx * number;
+        mutable QPixmap number_px;
     };
     S57_TargetModificator();
     ~S57_TargetModificator();

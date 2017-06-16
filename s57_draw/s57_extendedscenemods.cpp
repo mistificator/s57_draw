@@ -616,6 +616,18 @@ QPointF S57_RadarModificator::roiPos() const
     return roi_point;
 }
 
+QPolygonF S57_RadarModificator::roiSelector() const
+{
+    QPolygonF poly = rpi->polygon();
+    const QPointF pos = rpi->pos();
+    for (int i = 0; i < poly.count(); i++)
+    {
+        poly[i].setX(poly[i].x() + pos.x());
+        poly[i].setY(poly[i].y() + pos.y());
+    }
+    return poly;
+}
+
 int S57_RadarModificator::blockSize() const
 {
     return ri->blockSize();

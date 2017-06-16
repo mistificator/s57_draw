@@ -100,6 +100,7 @@ public slots:
     int roiAngle() const;
     void setRoiPos(QPointF);
     QPointF roiPos() const;
+    QPolygonF roiSelector() const;
     void viewportMoved();
     void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xaf);
     void updateRoi();

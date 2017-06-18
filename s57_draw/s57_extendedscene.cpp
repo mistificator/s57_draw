@@ -21,8 +21,7 @@ struct S57_ExtendedGraphicsScene::Data
     bool land_and_sea;
     QSize size;
     int flags;
-    double currentScale;
-    Data(S57_ExtendedGraphicsScene * _scene): scene(_scene),currentScale(1.0), builder(0), aspect(1.0), land_and_sea(false), flags(S57_ExtendedGraphicsScene::SceneAll)
+    Data(S57_ExtendedGraphicsScene * _scene): scene(_scene), builder(0), aspect(1.0), land_and_sea(false), flags(S57_ExtendedGraphicsScene::SceneAll)
     {
     }
     ~Data()
@@ -260,7 +259,6 @@ void S57_ExtendedGraphicsScene::scale(double _scale)
         return;
     }
     view()->setUpdatesEnabled(false);
-    d->currentScale = _scale;
     d->viewScale(_scale, _scale);
     updateVisibility();
     view()->setUpdatesEnabled(true);
@@ -296,10 +294,6 @@ void S57_ExtendedGraphicsScene::setAspect(double aspect)
     d->viewScale(1, _scale);
     updateVisibility();
     view()->setUpdatesEnabled(true);
-}
-double S57_ExtendedGraphicsScene::getCurrentScale() const
-{
-    return d->currentScale;
 }
 
 double S57_ExtendedGraphicsScene::aspect() const

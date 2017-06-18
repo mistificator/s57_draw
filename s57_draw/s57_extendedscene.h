@@ -34,7 +34,7 @@ public:
 
     void setAspect(double);
     double aspect() const;
-    double getCurrentScale()const;
+
     double precisionAspectHint() const;
 
     void setBuilder(S57_BuildScene * _builder);

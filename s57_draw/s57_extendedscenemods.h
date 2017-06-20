@@ -87,7 +87,8 @@ public:
         RadarForeground =       16,
         RadarSectorSelector =   32,
         RadarLimb =             64,
-        RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground | RadarSectorSelector | RadarLimb};
+        RadarRay =              128,
+        RadarAll = RadarCircle | RadarSector | RadarCoasts | RadarRaycastCoasts | RadarForeground | RadarSectorSelector | RadarLimb | RadarRay};
     void setFlags(int);
     int flags() const;
 
@@ -113,6 +114,7 @@ protected:
 private:
     RadarItem * ri;
     QGraphicsPolygonItem * rpi;
+    QGraphicsLineItem * rli;
     QRectF roi_rect;
     QPointF roi_point;
     QList<QGraphicsPolygonItem *> all_coasts;
@@ -148,6 +150,7 @@ public:
         int numberValue;
         QFont numberFont;
         QColor numberColor;
+        QSize numberSize;
         bool numberVisible;
         Target(): angle(0), numberVisible(false), numberColor(Qt::white), numberValue(1), visible(true) {}
     private:

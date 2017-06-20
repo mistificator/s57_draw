@@ -260,6 +260,10 @@ void S57_DrawWindow::createTargets()
         S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
         t.angle = 359.0 * qrand() / RAND_MAX;
         t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
+        t.numberVisible = true;
+        t.numberValue = i + 1;
+        t.numberSize = QSize(18, 18);
+        t.numberColor = QColor(127, 0, 255);
         targets_land_cache[t.name] = 0;
         targets_depth_cache[t.name] = 0;
         bool land_found, depth_found;
@@ -815,7 +819,7 @@ void S57_DrawWindow::closeEvent(QCloseEvent *)
 
 void S57_DrawWindow::setRadarFlags()
 {
-    radar.setFlags((ui->actionRadarCircle->isChecked() ? S57_RadarModificator::RadarCircle:0) |
+    radar.setFlags((ui->actionRadarCircle->isChecked() ? S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarRay:0) |
                  (ui->actionRadarSector->isChecked() ? S57_RadarModificator::RadarSector | S57_RadarModificator::RadarSectorSelector:0) |
                  (ui->actionRadarCoasts->isChecked() ? S57_RadarModificator::RadarCoasts:0 )|
                  (ui->actionRadarRaycastCoasts->isChecked() ? S57_RadarModificator::RadarRaycastCoasts:0)   |

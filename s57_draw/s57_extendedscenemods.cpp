@@ -570,11 +570,17 @@ S57_RadarModificator::S57_RadarModificator(): S57_ExtendedGraphicsSceneModificat
     ri = new RadarItem();
     ri->setZValue(1000000);
 
+    rli = new QGraphicsLineItem();
+    QPen rli_pen(Qt::yellow, 1);
+    rli_pen.setCosmetic(true);
+    rli->setPen(rli_pen);
+    rli->setZValue(ri->zValue() + 1);
+
     rpi = new QGraphicsPolygonItem();
     QPen rpi_pen(Qt::red, 5);
     rpi_pen.setCosmetic(true);
     rpi->setPen(rpi_pen);
-    rpi->setZValue(ri->zValue() + 1);
+    rpi->setZValue(ri->zValue() + 2);
 
     setRoiSize(0.2 * blockSize(), 0.2 * positionsCount());
 }
@@ -666,9 +672,11 @@ void S57_RadarModificator::onAddMod()
 
     scene()->addItem(ri);
     scene()->addItem(rpi);
+    scene()->addItem(rli);
 
     ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
     rpi->setVisible((radar_flags & RadarSectorSelector) == RadarSectorSelector);
+    rli->setVisible((radar_flags & RadarRay) == RadarRay);
 
     all_coasts = builder()->items<QGraphicsPolygonItem>("LNDARE");
 
@@ -713,9 +721,11 @@ void S57_RadarModificator::onRemoveMod()
 
     ri->setVisible(false);
     rpi->setVisible(false);
+    rli->setVisible(false);
 
     scene()->removeItem(ri);
     scene()->removeItem(rpi);
+    scene()->removeItem(rli);
 
     all_coasts.clear();
 }
@@ -744,11 +754,20 @@ float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
 
 void S57_RadarModificator::addData(QVector<short> & block, int position, const unsigned char coast_color)
 {
+    if ((radar_flags & RadarRay) == RadarRay)
+    {
+        const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+        const float radius = qMin((r.width() / scene()->aspect()) / 2, r.height() / 2);
+        const float angle = 2 * M_PI * position / positionsCount() - M_PI / 2;
+        const QPointF ct = radarCenter();
+        rli->setLine(QLineF(ct, QPointF(ct.x() + radius * ::cos(angle) * scene()->aspect(), ct.y() + radius * ::sin(angle))));
+    }
     const int block_size = ri->blockSize();
+    const QLineF ray(QPoint(1, position), QPointF(block_size, position));
     foreach (QLineF line, ri_sec_lines)
     {
         QPointF pt;
-        if (line.intersect(QLineF(QPoint(1, position), QPointF(block_size, position)), & pt) == QLineF::BoundedIntersection)
+        if (line.intersect(ray, & pt) == QLineF::BoundedIntersection)
         {
             float q, r;
             polarLinePointPrepare(line, q, r);
@@ -852,10 +871,10 @@ void S57_RadarModificator::viewportMoved()
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
 */
 
-    QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+    const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
     const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
 
-    QPointF ct = radarCenter();
+    const QPointF ct = radarCenter();
 
     const int sz = qMin(view()->viewport()->size().width(), view()->viewport()->size().height());
     ri->setScreenSize(QSize(sz, sz));
@@ -1261,6 +1280,7 @@ void S57_RadarModificator::setFlags(int f)
     radar_flags = f;
     ri->setVisible((radar_flags & RadarCircle) == RadarCircle);
     rpi->setVisible((radar_flags & RadarSectorSelector) == RadarSectorSelector);
+    rli->setVisible((radar_flags & RadarRay) == RadarRay);
     ri->setRoiEnabled((radar_flags & RadarSector) == RadarSector);
     viewportMoved();
 }
@@ -1315,13 +1335,11 @@ S57_TargetModificator::Target & S57_TargetModificator::addTarget(QPointF pos, QS
     target.pixmap->setToolTip(name);
     target.pixmap->setZValue(1000000);
 
-    target.number_px = QPixmap(32, 32);
-    target.number_px.fill(QColor(0, 0, 0, 0));
+    target.numberSize = QSize(12, 12);
+    target.numberFont = QFont("Arial", target.numberSize.height() * 3 / 4);
     target.number = new QFixedPixmapItemEx();
-    target.number->setPixmap(target.number_px);
-    target.number->setScreenSize(target.number_px.size());
-    target.numberFont = QFont("Arial", 8);
     target.number->setZValue(target.pixmap->zValue() + 1);
+
 
     _targets << target;
     return _targets.back();
@@ -1508,15 +1526,24 @@ void S57_TargetModificator::renderTarget(const Target * target)
     }
     if (target->number)
     {
+        if (target->number_px.size().width() != (int)(target->numberSize.width() / 0.375) || target->number_px.size().height() != (int)(target->numberSize.height() / 0.375))
+        {
+            target->number_px = QPixmap(target->numberSize.width() / 0.375, target->numberSize.height() / 0.375);
+            target->number->setPixmap(target->number_px);
+            target->number->setScreenSize(target->number_px.size());
+            const_cast<Target *>(target)->numberFont.setPointSize(target->numberSize.height() * 3 / 4);
+        }
         target->number_px.fill(QColor(0, 0, 0, 0));
         QPainter p(& target->number_px);
         p.setFont(target->numberFont);
         p.setPen(target->numberColor);
-        QRect frame_rect(0, 0, 12, 12);
-        QRect text_rect(1, 1, 10, 10);
+        QRect frame_rect(QPoint(0, 0), target->numberSize);
+        QRect text_rect(1, 1, target->numberSize.width() - 2, target->numberSize.height() - 2);
         const float angle = (target->angle + 90) * M_PI / 180;
-        frame_rect.moveCenter(QPoint(16 + 8 * ::cos(angle), 16 + 8 * ::sin(angle)));
-        text_rect.moveCenter(QPoint(16 + 8 * ::cos(angle), 16 + 8 * ::sin(angle)));
+        frame_rect.moveCenter(QPoint((target->number_px.width() / 2) + (target->number_px.width() / 4) * ::cos(angle), (target->number_px.height() / 2) + (target->number_px.height() / 4) * ::sin(angle)));
+        text_rect.moveCenter(QPoint((target->number_px.width() / 2) + (target->number_px.width() / 4) * ::cos(angle), (target->number_px.height() / 2) + (target->number_px.height() / 4) * ::sin(angle)));
+//        p.setBrush(QColor(target->numberColor.red(), target->numberColor.green(), target->numberColor.blue(), 80));
+        p.setBrush(QColor(0, 0, 0, 80));
         p.drawRect(frame_rect);
         p.drawText(text_rect, Qt::AlignCenter, QString::number(target->numberValue));
         if (isActive() && !target->number->scene())

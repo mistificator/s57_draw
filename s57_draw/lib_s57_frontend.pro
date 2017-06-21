@@ -4,7 +4,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET =    lib_s57_frontend
 TEMPLATE =  app
 
-greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .exe
+#greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .exe
+win32:TARGET_EXT = .exe
 
 DESTDIR = ../s57_bin
 

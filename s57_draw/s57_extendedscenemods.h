@@ -94,6 +94,7 @@ public:
 
     void setCustomRadarCenter(QPointF);
     QPointF radarCenter() const;
+    double radarRadius() const;
 public slots:
     void setMetrics(int _block_size, int _positions_count);
     void setRoiSize(int _d_radius, int _d_angle); // d_radius in 0 .. blockSize(), d_angle in 0 .. positionsCount()
@@ -132,7 +133,7 @@ private:
 };
 
 #include <QUuid>
-class QFixedPixmapItemEx;
+class QFixedPixmapItem;
 class LIB_S57_EXT_EXPORT S57_TargetModificator: public QObject, public S57_ExtendedGraphicsSceneModificator
 {
     Q_OBJECT
@@ -155,8 +156,8 @@ public:
         Target(): angle(0), numberVisible(false), numberColor(Qt::white), numberValue(1), visible(true) {}
     private:
         friend class S57_TargetModificator;
-        QFixedPixmapItemEx * pixmap;
-        QFixedPixmapItemEx * number;
+        QFixedPixmapItem * pixmap;
+        QFixedPixmapItem * number;
         mutable QPixmap number_px;
     };
     S57_TargetModificator();
@@ -193,6 +194,19 @@ protected:
 private:
     double dir;
     QColor c;
+};
+
+class LIB_S57_EXT_EXPORT S57_SimpleItemModificator: public S57_ExtendedGraphicsSceneModificator
+{
+public:
+    S57_SimpleItemModificator();
+    void setItem(QGraphicsItem & _item); // user is resposible for _item destiny, modificator doesn't own it
+    QGraphicsItem & item() const;
+protected:
+    virtual void onAddMod();
+    virtual void onRemoveMod();
+private:
+    QGraphicsItem * p_item;
 };
 
 #endif // S57_EXTENDEDSCENEMODS_H

@@ -2,6 +2,7 @@
 #include "ogrsf_frmts.h"
 #include "s52_symbol.h"
 #include "s52_conditional.h"
+#include "s52_fixeditem.h"
 #include <QGraphicsItem>
 #include <QDir>
 #include <QMultiMap>
@@ -22,61 +23,6 @@
 #include "lib_prti99.h"
 
 double mercator_sretch = 1.0;
-
-class QFixedPixmapItem: public QGraphicsItem
-{
-public:
-    QFixedPixmapItem(QGraphicsItem * parent = 0): QGraphicsItem(parent), pixmap_ptr(0)
-    {
-        setScreenSize(QSize(10, 10));
-    }
-    void setScreenSize(const QSize & _size)
-    {
-        prepareGeometryChange();
-        screen_size = _size;
-    }
-    void setPixmap(const QPixmap & _pixmap)
-    {
-        prepareGeometryChange();
-        pixmap = _pixmap;
-    }
-    void setPixmap(const QPixmap * _pixmap)
-    {
-        prepareGeometryChange();
-        pixmap_ptr = (QPixmap *)_pixmap;
-    }
-    QRectF boundingRect() const
-    {
-        QRectF _r;
-        if (scene() && (!scene()->views().isEmpty()))
-        {
-            QGraphicsView * _view = scene()->views().front();
-            QPoint _pt = _view->mapFromScene(scenePos());
-            _r = mapFromScene(_view->mapToScene(QRect(QPoint(_pt.x() - screen_size.width() / 2, _pt.y() - screen_size.height() / 2), screen_size))).boundingRect();
-            if (_r.size() == screen_size)
-            {
-                return (QRectF());
-            }
-        }
-        return (_r);
-    }
-    void paint(QPainter * _painter, const QStyleOptionGraphicsItem * /*_option*/, QWidget * /*_widget*/)
-    {
-        if (pixmap_ptr)
-        {
-            _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
-        }
-        else
-        {
-            _painter->drawPixmap(boundingRect(), pixmap, pixmap.rect());
-        }
-    }
-
-private:
-    QSize screen_size;
-    QPixmap pixmap;
-    QPixmap * pixmap_ptr;
-};
 
 struct S57_BuildScene::Data
 {

@@ -12,6 +12,8 @@
 #include <QPainter>
 #include <cmath>
 #include "cpl_port.h"
+#include "s52_fixeditem.h"
+
 
 // -----------------------------------------------------------------------------------------------
 
@@ -249,107 +251,10 @@ bool S57_RulerModificator::onEvent(QEvent *_ev)
 
 // -----------------------------------------------------------------------------------------------
 
-class QFixedPixmapItemEx: public QGraphicsItem
+class RadarItem: public QFixedPixmapItem
 {
 public:
-    QFixedPixmapItemEx(QGraphicsItem *parent = 0): QGraphicsItem(parent), pixmap_ptr(0), image_ptr(0), src_type(Pixmap)
-    {
-        setScreenSize(QSize(10, 10));
-    }
-    void setScreenSize(const QSize & _size)
-    {
-        prepareGeometryChange();
-        screen_size = _size;
-    }
-    QSize screenSize() const
-    {
-        return screen_size;
-    }
-    void setPixmap(const QPixmap & _pixmap)
-    {
-        prepareGeometryChange();
-        pixmap = _pixmap;
-        src_type = Pixmap;
-    }
-    void setPixmap(const QPixmap * _pixmap)
-    {
-        prepareGeometryChange();
-        pixmap_ptr = (QPixmap *)_pixmap;
-        src_type = Pixmap_Ptr;
-    }
-    void setImage(const QImage & _image)
-    {
-        prepareGeometryChange();
-        image = _image;
-        src_type = Image;
-    }
-    void setImage(const QImage * _image)
-    {
-        prepareGeometryChange();
-        image_ptr = (QImage *)_image;
-        src_type = Image_Ptr;
-    }
-    QRectF boundingRect() const
-    {
-        QRectF _r;
-        if (scene() && (!scene()->views().isEmpty()))
-        {
-            if (QGraphicsView * _view = scene()->views().front())
-            {
-                QPoint _pt = _view->mapFromScene(scenePos());
-                _r = mapFromScene(_view->mapToScene(QRect(QPoint(_pt.x() - screen_size.width() / 2, _pt.y() - screen_size.height() / 2), screen_size))).boundingRect();
-                if (_r.size() == screen_size)
-                {
-                    return (QRectF());
-                }
-            }
-        }
-        return (_r);
-    }
-    void paint(QPainter * _painter, const QStyleOptionGraphicsItem * /*_option*/, QWidget * /*_widget*/)
-    {
-        switch (src_type)
-        {
-        case Pixmap:
-            if (!pixmap.isNull())
-            {
-                _painter->drawPixmap(boundingRect(), pixmap, pixmap.rect());
-            }
-            break;
-        case Pixmap_Ptr:
-            if (pixmap_ptr && !pixmap_ptr->isNull())
-            {
-                _painter->drawPixmap(boundingRect(), * pixmap_ptr, pixmap_ptr->rect());
-            }
-            break;
-        case Image:
-            if (!image.isNull())
-            {
-                _painter->drawImage(boundingRect(), image, image.rect());
-            }
-            break;
-        case Image_Ptr:
-            if (image_ptr && !image_ptr->isNull())
-            {
-                _painter->drawImage(boundingRect(), * image_ptr, image_ptr->rect());
-            }
-            break;
-        }
-    }
-private:
-    QSize screen_size;
-    QPixmap pixmap;
-    QPixmap * pixmap_ptr;
-    QImage image;
-    QImage * image_ptr;
-    enum {Pixmap = 0, Pixmap_Ptr, Image, Image_Ptr};
-    int src_type;
-};
-
-class RadarItem: public QFixedPixmapItemEx
-{
-public:
-    RadarItem(QGraphicsItem *parent = 0): QFixedPixmapItemEx(parent)
+    RadarItem(QGraphicsItem *parent = 0): QFixedPixmapItem(parent)
     {
         roi_enabled = true;
         setMetrics(8192, 4096);
@@ -394,7 +299,7 @@ public:
     }
     void setScreenSize(const QSize & _size)
     {
-        QFixedPixmapItemEx::setScreenSize(_size);
+        QFixedPixmapItem::setScreenSize(_size);
         adjustSize();
     }
     QImage roi(double start_angle, double stop_angle, int start_distance, int stop_distance) const // angles in radians, 0 <= angle <= 2 * M_PI
@@ -756,8 +661,9 @@ void S57_RadarModificator::addData(QVector<short> & block, int position, const u
 {
     if ((radar_flags & RadarRay) == RadarRay)
     {
-        const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
-        const float radius = qMin((r.width() / scene()->aspect()) / 2, r.height() / 2);
+//        const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+//        const float radius = qMin((r.width() / scene()->aspect()) / 2, r.height() / 2);
+        const float radius = radarRadius();
         const float angle = 2 * M_PI * position / positionsCount() - M_PI / 2;
         const QPointF ct = radarCenter();
         rli->setLine(QLineF(ct, QPointF(ct.x() + radius * ::cos(angle) * scene()->aspect(), ct.y() + radius * ::sin(angle))));
@@ -871,8 +777,9 @@ void S57_RadarModificator::viewportMoved()
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
 */
 
-    const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
-    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+//    const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+//    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+    const float radius = radarRadius();
 
     const QPointF ct = radarCenter();
 
@@ -1080,8 +987,9 @@ void S57_RadarModificator::updateRoi(QPointF & _pt)
 
     const double radius = qMin(qAbs(tl.x() - br.x()), qAbs(tl.y() - br.y())) / 2.0;
 */
-    QRectF r = _view->mapToScene(_view->viewport()->rect()).boundingRect();
-    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+//    QRectF r = _view->mapToScene(_view->viewport()->rect()).boundingRect();
+//    const float radius = qMin((r.width() / aspect) / 2, r.height() / 2);
+    const float radius = radarRadius();
 
     QPointF ct = radarCenter();
 
@@ -1305,6 +1213,15 @@ QPointF S57_RadarModificator::radarCenter() const
     return custom_ct.isNull() ? _view->mapToScene(_view->viewport()->rect()).boundingRect().center() : custom_ct;
 }
 
+double S57_RadarModificator::radarRadius() const
+{
+    if (!view() || !scene())
+    {
+        return -1;
+    }
+    const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
+    return  qMin((r.width() / scene()->aspect()) / 2, r.height() / 2);
+}
 // ---------------------------------------------------------------------------------------------------------
 
 S57_TargetModificator::S57_TargetModificator(): QObject(), S57_ExtendedGraphicsSceneModificator()
@@ -1331,13 +1248,13 @@ S57_TargetModificator::Target & S57_TargetModificator::addTarget(QPointF pos, QS
             << QPointF(-5, 15)
             << QPointF(-5, -5)
             << QPointF(0, -15);
-    target.pixmap = new QFixedPixmapItemEx();
+    target.pixmap = new QFixedPixmapItem();
     target.pixmap->setToolTip(name);
     target.pixmap->setZValue(1000000);
 
     target.numberSize = QSize(12, 12);
     target.numberFont = QFont("Arial", target.numberSize.height() * 3 / 4);
-    target.number = new QFixedPixmapItemEx();
+    target.number = new QFixedPixmapItem();
     target.number->setZValue(target.pixmap->zValue() + 1);
 
 
@@ -1622,4 +1539,38 @@ void S57_DirectionArrowModificator::onDrawForeground(QPainter * _painter, const 
     _painter->drawPolygon(poly);
 
     _painter->restore();
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+S57_SimpleItemModificator::S57_SimpleItemModificator(): S57_ExtendedGraphicsSceneModificator()
+{
+    p_item = 0;
+}
+
+void S57_SimpleItemModificator::setItem(QGraphicsItem & _item)
+{
+    p_item = & _item;
+}
+
+QGraphicsItem & S57_SimpleItemModificator::item() const
+{
+    return * p_item;
+}
+
+void S57_SimpleItemModificator::onAddMod()
+{
+    if (p_item)
+    {
+        scene()->addItem(p_item);
+    }
+}
+
+
+void S57_SimpleItemModificator::onRemoveMod()
+{
+    if (p_item)
+    {
+        scene()->removeItem(p_item);
+    }
 }

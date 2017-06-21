@@ -43,7 +43,7 @@ public:
 
     enum ItemKeys {ItemLayerNameKey = 1};
 
-    template <class T = QGraphicsItem>
+    template <class T>
     QList<T *> items(QString _layer_name) const
     {
         QList<T *> _items;
@@ -59,7 +59,19 @@ public:
         }
         return _items;
     }
-
+    QList<QGraphicsItem *> items(QString _layer_name) const
+    {
+        QList<QGraphicsItem *> _items;
+        foreach(QGraphicsItem * item, items())
+        {
+            if (item->data(S57_BuildScene::ItemLayerNameKey).toString().compare(_layer_name, Qt::CaseInsensitive) == 0)
+            {
+                _items << item;
+            }
+        }
+        return _items;
+    }
+	
     void setRenderEnabled(bool);
     bool isRenderEnabled() const;
 private:

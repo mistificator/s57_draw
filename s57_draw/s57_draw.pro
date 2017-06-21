@@ -5,7 +5,11 @@ TARGET =    s57_draw
 TEMPLATE =  app
 DESTDIR = ../s57_bin
 
-greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .exe
+# hack for conflicting compiler versions: here must be version of Qt compiler
+#win32:DEFINES += _MSC_VER=1600
+
+#greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .exe
+win32:TARGET_EXT = .exe
 
 SOURCES  +=\
             s57_draw_main.cpp \

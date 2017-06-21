@@ -4,8 +4,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 win32:TARGET =    lib_s57
 unix:TARGET =    _s57
 
-#greaterThan(QT_MAJOR_VERSION, 4): win32:TARGET_EXT = .dll
-win32:TARGET_EXT = .dll
+!isEmpty(QMAKE_QT_DLL) {
+    win32:TARGET_EXT = .dll
+}
 
 unix:CONFIG += staticlib
 

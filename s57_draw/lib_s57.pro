@@ -4,7 +4,9 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 win32:TARGET =    lib_s57
 unix:TARGET =    _s57
 
-!isEmpty(QMAKE_QT_DLL) {
+include (qt_dll.pri)
+
+!isEmpty(QMAKE_QT_DLL):{
     win32:TARGET_EXT = .dll
 }
 

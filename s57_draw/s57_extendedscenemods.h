@@ -104,7 +104,8 @@ public slots:
     QPointF roiPos() const;
     QPolygonF roiSelector() const;
     void viewportMoved();
-    void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xaf);
+    void addData(QVector<short> & block, int position, const unsigned char coast_color = 0xaf); // block size == blockSize()
+    void addData(short * block, int position, const unsigned char coast_color = 0xaf); // block size == blockSize()
     void updateRoi();
 protected:
     virtual void onAddMod();

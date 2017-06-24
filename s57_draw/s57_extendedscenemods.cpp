@@ -259,6 +259,7 @@ public:
         roi_enabled = true;
         setMetrics(8192, 4096);
         colors[0] = 0;
+        prev_position = 0;
         for (int c = 1; c < 192; c++)
         {
             colors[c] = QColor::fromHsv(120, 255, c * 255 / 192).rgba();
@@ -293,9 +294,37 @@ public:
     {
         createDstMap();
     }
-    void addData(const QVector<short> & block, int position)
+    void addData(const short * block, int position)
     {
-        _addData(block, position);
+        if (map_dst.size() < block_size * positions_count)
+        {
+            return;
+        }
+        if (position >= positions_count)
+        {
+            return;
+        }
+        if (position - prev_position < 0 && position < positions_count / 2 && prev_position > positions_count / 2)
+        {
+            dst.fill(0);
+        }
+        prev_position = position;
+        ::memcpy(src.data() + block_size * position, block, block_size * sizeof(src.data()[0]));
+        if (roi_enabled)
+        {
+            const int * offset_ptr = map_dst.constData() + block_size * position;
+            short * dst_ptr = dst.data();
+            unsigned int * img_ptr = (unsigned int *)img.bits();
+            for (int v = 0; v < block_size; v++, offset_ptr++, block++)
+            {
+                short & _dst = dst_ptr[* offset_ptr];
+                if (_dst < * block)
+                {
+                    _dst = * block;
+                }
+                img_ptr[* offset_ptr] = colors[_dst & 0xff];
+            }
+        }
     }
     void setScreenSize(const QSize & _size)
     {
@@ -381,6 +410,7 @@ private:
     mutable QImage sec_img;
     QRgb colors[256];
     bool roi_enabled;
+    int prev_position;
     void createSrcMap()
     {
         qDebug() << "createSrcMap" << block_size << positions_count;
@@ -433,38 +463,6 @@ private:
                 const int x = _map_src.x() * xw + (w / 2);
                 const int y = _map_src.y() * yh + (h / 2);
                 map_dst[idx] = (int)y * w + (int)x;
-            }
-        }
-    }
-    void _addData(const QVector<short> & block, int position)
-    {
-        if (map_dst.size() < block_size * positions_count)
-        {
-            return;
-        }
-        if (position >= positions_count)
-        {
-            return;
-        }
-        if (position == 0)
-        {
-            dst.fill(0);
-        }
-        ::memcpy(src.data() + block_size * position, block.constData(), block_size * sizeof(src.data()[0]));
-        if (roi_enabled)
-        {
-            const int * offset_ptr = map_dst.constData() + block_size * position;
-            const short * block_ptr = block.constData();
-            short * dst_ptr = dst.data();
-            unsigned int * img_ptr = (unsigned int *)img.bits();
-            for (int v = 0; v < block_size; v++, offset_ptr++, block_ptr++)
-            {
-                short & _dst = dst_ptr[* offset_ptr];
-                if (_dst < * block_ptr)
-                {
-                    _dst = * block_ptr;
-                }
-                img_ptr[* offset_ptr] = colors[_dst & 0xff];
             }
         }
     }
@@ -659,6 +657,11 @@ float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
 
 void S57_RadarModificator::addData(QVector<short> & block, int position, const unsigned char coast_color)
 {
+    addData(block.data(), position, coast_color);
+}
+
+void S57_RadarModificator::addData(short * block, int position, const unsigned char coast_color)
+{
     if ((radar_flags & RadarRay) == RadarRay)
     {
 //        const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
@@ -679,10 +682,10 @@ void S57_RadarModificator::addData(QVector<short> & block, int position, const u
             polarLinePointPrepare(line, q, r);
             for (float sub_pos = 0.0f; sub_pos < 1.0f; sub_pos += 0.1f) // super resolution
             {
-                const float plp = polarLinePoint(q, r, position + sub_pos);
-                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp))] = coast_color;
-                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp + 1))] = coast_color;
-                block[qMin<float>(block_size - 1, qMax<float>(0.0f, plp - 1))] = coast_color;
+                const int plp = polarLinePoint(q, r, position + sub_pos);
+                block[qMin<int>(block_size - 1, qMax<int>(0.0f, plp))] = coast_color;
+                block[qMin<int>(block_size - 1, qMax<int>(0.0f, plp + 1))] = coast_color;
+                block[qMin<int>(block_size - 1, qMax<int>(0.0f, plp - 1))] = coast_color;
             }
         }
     }

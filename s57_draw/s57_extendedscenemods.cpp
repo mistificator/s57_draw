@@ -10,10 +10,29 @@
 #include <QScrollBar>
 #include <QTime>
 #include <QPainter>
-#include <cmath>
-#include "cpl_port.h"
 #include "s52_fixeditem.h"
 
+float sin_table_deg[10800], cos_table_deg[10800];
+float sin_table_rad[(int)(6 * M_PI * 1000)], cos_table_rad[(int)(6 * M_PI * 1000)];
+
+struct InitTables
+{
+    InitTables()
+    {
+        for (int i = 0; i < sizeof(sin_table_deg) / sizeof(sin_table_deg[0]); i++)
+        {
+            sin_table_deg[i] = ::sinf(i * M_PI / 1800.0);
+            cos_table_deg[i] = ::cosf(i * M_PI / 1800.0);
+        }
+        for (int i = 0; i < (int)(6 * M_PI * 1000); i++)
+        {
+            sin_table_rad[i] = ::sinf(i / 1000.0);
+            cos_table_rad[i] = ::cosf(i / 1000.0);
+        }
+    }
+};
+
+static InitTables init_tables;
 
 // -----------------------------------------------------------------------------------------------
 
@@ -257,6 +276,9 @@ public:
     RadarItem(QGraphicsItem *parent = 0): QFixedPixmapItem(parent)
     {
         roi_enabled = true;
+        src.reserve(8192 * 4096);
+        map_src.reserve(8192 * 4096);
+        map_dst.reserve(8192 * 4096);
         setMetrics(8192, 4096);
         colors[0] = 0;
         prev_position = 0;
@@ -415,16 +437,17 @@ private:
     {
         qDebug() << "createSrcMap" << block_size << positions_count;
         map_src.resize(block_size * positions_count);
-        map_src.fill(QPointF(0, 0));
         src.resize(block_size * positions_count);
         src.fill(0);
         const double angle_step = 2.0 * M_PI / positions_count;
-        for (int t = 0; t < positions_count; t++)
+        QPointF * map_src_ptr = map_src.data();
+        double angle = - M_PI / 2 + angle_step;
+        for (int t = 0; t < positions_count; t++, angle += angle_step)
         {
-            const double angle = t * angle_step;
-            for (int v = 0; v < block_size; v++)
+            const int index = R2T(angle);
+            for (int v = 0; v < block_size; v++, map_src_ptr++)
             {
-                map_src[block_size * t + v] = QPointF(v * ::cosf(angle - M_PI / 2 + angle_step), v * ::sinf(angle - M_PI / 2 + angle_step));
+                * map_src_ptr = QPointF(v * cos_table_rad[index], v * sin_table_rad[index]);
             }
         }
     }
@@ -441,28 +464,37 @@ private:
             return;
         }
         qDebug() << "createDstMap" << w << h;
-        dst.resize(w * h);
-        dst.fill(0);
 
-        img = QImage(w, h, QImage::Format_ARGB32);
-        img.fill(QColor(0, 0, 0, 0).rgba());
-        setImage(& img);
+        if (dst.count() != w * h)
+        {
+            dst.resize(w * h);
+            dst.fill(0);
+        }
+
+        if (img.isNull() || img.size() != QSize(w, h))
+        {
+            img = QImage(w, h, QImage::Format_ARGB32);
+            img.fill(QColor(0, 0, 0, 0).rgba());
+            setImage(& img);
+        }
 
         map_dst.resize(block_size * positions_count);
-        map_dst.fill(0);
 
         const double xw = (1.0 * w) / (2 * block_size);
         const double yh = (1.0 * h) / (2 * block_size);
 
+        const int w_2 = w /2;
+        const int h_2 = h /2;
+
+        const qreal * map_src_ptr = (const qreal *)map_src.constData();
+        int * map_dst_ptr = map_dst.data();
         for (int t = 0; t < positions_count; t++)
         {
             for (int v = 0; v < block_size; v++)
             {
-                const int idx = block_size * t + v;
-                const QPointF & _map_src = map_src[idx];
-                const int x = _map_src.x() * xw + (w / 2);
-                const int y = _map_src.y() * yh + (h / 2);
-                map_dst[idx] = (int)y * w + (int)x;
+                const int x = * map_src_ptr++ * xw + w_2;
+                const int y = * map_src_ptr++ * yh + h_2;
+                * map_dst_ptr++ = (int)y * w + (int)x;
             }
         }
     }
@@ -638,14 +670,14 @@ void S57_RadarModificator::polarLinePointPrepare(const QLineF & line, float & q,
     const float t0 = line.p1().y() * 2 * M_PI / ri->positionsCount(), t1 = line.p2().y() * 2 * M_PI / ri->positionsCount();
     const float r0 = line.p1().x(), r1 = line.p2().x();
 
-    q = (r1 * ::sin(t1) - r0 * ::sin(t0)) / (r1 * ::cos(t1) - r0 * ::cos(t0));
-    r = r0 * (::sin(t0) - q * ::cos(t0));
+    q = (r1 * sin_table_rad[R2T(t1)] - r0 * sin_table_rad[R2T(t0)]) / (r1 * cos_table_rad[R2T(t1)] - r0 * cos_table_rad[R2T(t0)]);
+    r = r0 * (sin_table_rad[R2T(t0)] - q * cos_table_rad[R2T(t0)]);
 }
 
 float S57_RadarModificator::polarLinePoint(float q, float r, float t)
 {
     t = t * 2 * M_PI / ri->positionsCount();
-    return r / (::sin(t) - q * ::cos(t));
+    return r / (sin_table_rad[R2T(t)] - q * cos_table_rad[R2T(t)]);
 }
 
 float S57_RadarModificator::polarLinePoint(const QLineF & line, float t)
@@ -664,8 +696,6 @@ void S57_RadarModificator::addData(short * block, int position, const unsigned c
 {
     if ((radar_flags & RadarRay) == RadarRay)
     {
-//        const QRectF r = view()->mapToScene(view()->viewport()->rect()).boundingRect();
-//        const float radius = qMin((r.width() / scene()->aspect()) / 2, r.height() / 2);
         const float radius = radarRadius();
         const float angle = 2 * M_PI * position / positionsCount() - M_PI / 2;
         const QPointF ct = radarCenter();
@@ -736,6 +766,15 @@ void S57_RadarModificator::viewportMoved()
     WidgetUpdatesDisabler wud(view());
 
     S57_ExtendedGraphicsScene * _scene = scene();
+
+    if ((radar_flags & RadarRay) == RadarRay)
+    {
+        const QPointF ct = radarCenter();
+        const QLineF line = rli->line();
+        double dx = ct.x() - line.x1();
+        double dy = ct.y() - line.y1();
+        rli->setLine(line.x1() + dx, line.y1() + dy, line.x2() + dx, line.y2() + dy);
+    }
 
     QStringList log;
     log << QString(__FUNCTION__) + " start";
@@ -1017,18 +1056,26 @@ void S57_RadarModificator::updateRoi(QPointF & _pt)
     const double a2 = angle + a_step;
 
     _pt = QPointF(ct.x() + ((l1 + l2) / 2) * ::cos((a1 + a2) / 2) * aspect, ct.y() + ((l1 + l2) / 2) * ::sin((a1 + a2) / 2));
-/*
-    QPolygonF rpi_poly;
-    rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-    rpi_poly << QPointF(l1 * ::cos(a2) * aspect, l1 * ::sin(a2));
-    rpi_poly << QPointF(l2 * ::cos(a2) * aspect, l2 * ::sin(a2));
-    rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
-*/
 
     QPolygonF rpi_poly;
 
+
+    rpi_poly << QPointF(l1 * cos_table_rad[R2T(a1)] * aspect, l1 * sin_table_rad[R2T(a1)]);
+    rpi_poly << QPointF(l2 * cos_table_rad[R2T(a1)] * aspect, l2 * sin_table_rad[R2T(a1)]);
+    for (double a = a1; a <= a2; a += 0.05)
+    {
+        rpi_poly << QPointF(l2 * cos_table_rad[R2T(a)] * aspect, l2 * sin_table_rad[R2T(a)]);
+    }
+    rpi_poly << QPointF(l2 * cos_table_rad[R2T(a2)] * aspect, l2 * sin_table_rad[R2T(a2)]);
+    rpi_poly << QPointF(l1 * cos_table_rad[R2T(a2)] * aspect, l1 * sin_table_rad[R2T(a2)]);
+    for (double a = a2; a >= a1; a -= 0.05)
+    {
+        rpi_poly << QPointF(l1 * cos_table_rad[R2T(a)] * aspect, l1 * sin_table_rad[R2T(a)]);
+    }
+
+    /*
     rpi_poly << QPointF(l1 * ::cos(a1) * aspect, l1 * ::sin(a1));
-    rpi_poly << QPointF(l2 * ::cos(a1) * aspect, l2 * ::sin(a1));
+    rpi_poly << QPointF(l2 * ::cos(a1)  * aspect, l2 * ::sin(a1));
     for (double a = a1; a <= a2; a += 0.05)
     {
         rpi_poly << QPointF(l2 * ::cos(a) * aspect, l2 * ::sin(a));
@@ -1039,6 +1086,7 @@ void S57_RadarModificator::updateRoi(QPointF & _pt)
     {
         rpi_poly << QPointF(l1 * ::cos(a) * aspect, l1 * ::sin(a));
     }
+    */
 
     rpi->setPolygon(rpi_poly);
 
@@ -1126,8 +1174,8 @@ void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
         for (int i = 0; i < count / 3; i++)
         {
             const float angle = i * step * 3 * M_PI / 180.0;
-            const float _sin = ::sin(angle - M_PI / 2);
-            const float _cos = ::cos(angle - M_PI / 2);
+            const float _sin = sin_table_rad[R2T(angle - M_PI / 2)];
+            const float _cos = cos_table_rad[R2T(angle - M_PI / 2)];
             _painter->drawLine(QPoint(center_x, center_y), QPoint(center_x + radius * _cos, center_y + radius * _sin));
         }
         p.setStyle(Qt::SolidLine);
@@ -1141,8 +1189,8 @@ void S57_RadarModificator::onDrawForeground(QPainter * _painter, const QRectF &)
         for (int i = 0; i < count; i++)
         {
             const float angle = i * step * M_PI / 180.0;
-            const float _sin = ::sin(angle - M_PI / 2);
-            const float _cos = ::cos(angle - M_PI / 2);
+            const float _sin = sin_table_rad[R2T(angle - M_PI / 2)];
+            const float _cos = cos_table_rad[R2T(angle - M_PI / 2)];
             _painter->drawLine(QPoint(center_x + tick_offset * _cos, center_y + tick_offset * _sin), QPoint(center_x + radius * _cos, center_y + radius * _sin));
             _painter->drawText(QPoint(center_x + label_offset * _cos + text_offset_x, center_y + label_offset * _sin + text_offset_y), QString::number(i * step));
         }

@@ -11,6 +11,13 @@
 #include <QGraphicsView>
 #include <QGraphicsSimpleTextItem>
 #include <QPixmap>
+#include <qmath.h>
+
+extern float sin_table_deg[10800], cos_table_deg[10800];
+extern float sin_table_rad[(int)(6 * M_PI * 1000)], cos_table_rad[(int)(6 * M_PI * 1000)];
+// angle to table index convert
+#define R2T(angle_in_radians) (int)((angle_in_radians + 2 * M_PI) * 1000)
+#define D2T(angle_in_degrees) (int)((angle_in_degrees + 360) * 10)
 
 class S57_BuildScene;
 class S57_ExtendedGraphicsScene;

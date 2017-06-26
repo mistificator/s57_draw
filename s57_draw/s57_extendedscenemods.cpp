@@ -494,7 +494,7 @@ private:
             {
                 const int x = * map_src_ptr++ * xw + w_2;
                 const int y = * map_src_ptr++ * yh + h_2;
-                * map_dst_ptr++ = (int)y * w + (int)x;
+                * map_dst_ptr++ = (y * w) + x;
             }
         }
     }

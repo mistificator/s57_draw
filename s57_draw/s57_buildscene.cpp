@@ -115,7 +115,7 @@ struct S57_BuildScene::Data
         QString * category;
     };
     QMultiMap<QString, style_struct> p_style, l_style, a_style;
-    QMap<qint64, QGraphicsItemGroup *> groups;
+    QMap<qint64, QGraphicsItemGroup *> groups, super_groups;
     QList<QGraphicsItem *> items;
     QStringList layers;
     double scale;
@@ -499,7 +499,7 @@ struct S57_BuildScene::Data
         return (& symbols[_complex_symbol]);
     }
 
-    QGraphicsItem * addToGroup(qint64 _scamin, QGraphicsItem * _item, QList<QGraphicsItem *> & _items)
+    QGraphicsItem * addToGroup(qint64 _scamin, QGraphicsItem * _item)
     {
         if (_scamin == 0)
         {
@@ -509,7 +509,7 @@ struct S57_BuildScene::Data
         if (!_g)
         {
             _g = new QGraphicsItemGroup();
-            _items << _g;
+//            _items << _g;
             _g->setZValue(-_scamin);
             _g->setFlag(QGraphicsItem::ItemHasNoContents);
         }
@@ -571,7 +571,7 @@ struct S57_BuildScene::Data
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
-                                addToGroup(_scamin, _item, _items);
+                                addToGroup(_scamin, _item);
                                 _item->setPos(((OGRPoint *)_geom)->getX(), -((OGRPoint *)_geom)->getY()*mercator_sretch);
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -589,7 +589,7 @@ struct S57_BuildScene::Data
                                 {
                                     _p = (OGRPoint *)((OGRMultiPoint *)_geom)->getGeometryRef(_idx);
                                     _item = new QFixedPixmapItem();
-                                    addToGroup(_scamin, _item, _items);
+                                    addToGroup(_scamin, _item);
                                     _item->setPos(_p->getX(), -_p->getY()*mercator_sretch);
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -615,14 +615,14 @@ struct S57_BuildScene::Data
 								path.lineTo(pt.getX(), -pt.getY()*mercator_sretch);
 							}
                             _item = new QGraphicsPathItem(path);
-							addToGroup(_scamin, _item, _items);
+                            addToGroup(_scamin, _item);
                             ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
                             _item->setZValue(10 + _s.priority - _z_offset);
 							_item->setToolTip(_tooltip);
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
-                                addToGroup(_scamin, _item, _items);
+                                addToGroup(_scamin, _item);
                                 _item->setPos(path.pointAtPercent(0.5));
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -648,14 +648,14 @@ struct S57_BuildScene::Data
 									path.lineTo(pt.getX(), -pt.getY()*mercator_sretch);
 								}
                                 _item = new QGraphicsPathItem(path);
-                                addToGroup(_scamin, _item, _items);
+                                addToGroup(_scamin, _item);
                                 ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
                                 _item->setZValue(10 + _s.priority - _z_offset);
 								_item->setToolTip(_tooltip);
                                 if (!_s.symbol->isEmpty())
                                 {
                                     _item = new QFixedPixmapItem();
-                                    addToGroup(_scamin, _item, _items);
+                                    addToGroup(_scamin, _item);
                                     _item->setPos(path.pointAtPercent(0.5));
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -682,7 +682,7 @@ struct S57_BuildScene::Data
                             }
 //	                        _poly.append(_poly[0]);
 							_item = new QGraphicsPolygonItem(_poly);
-							addToGroup(_scamin, _item, _items);
+                            addToGroup(_scamin, _item);
 							((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
 							if (_poly.front() == _poly.back())
 							{
@@ -693,7 +693,7 @@ struct S57_BuildScene::Data
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
-                                addToGroup(_scamin, _item, _items);
+                                addToGroup(_scamin, _item);
                                 _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -735,7 +735,7 @@ struct S57_BuildScene::Data
 									}
 									_poly << _poly.front();
 									_item = new QGraphicsPolygonItem(_poly);
-									addToGroup(_scamin, _item, _items);
+                                    addToGroup(_scamin, _item);
 									((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
 //									((QGraphicsPolygonItem *)_item)->setPen(QColor(Qt::red));								
 									((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
@@ -749,7 +749,7 @@ struct S57_BuildScene::Data
                             if (!_s.symbol->isEmpty())
                             {
                                 _item = new QFixedPixmapItem();
-                                addToGroup(_scamin, _item, _items);
+                                addToGroup(_scamin, _item);
                                 _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
@@ -773,8 +773,41 @@ struct S57_BuildScene::Data
 				}
             }
         }
-        items << _items;
+        QGraphicsItemGroup * & _g = super_groups[_z_offset];
+        if (!_g)
+        {
+            _g = new QGraphicsItemGroup();
+            _g->setZValue(-_z_offset);
+            _g->setFlag(QGraphicsItem::ItemHasNoContents);
+        }
+        foreach (QGraphicsItemGroup * _group, groups.values())
+        {
+            QGraphicsRectItem * br = new QGraphicsRectItem(_group->boundingRect());
+            br->setPen(QPen(Qt::red, 0));
+            br->setGroup(_group);
+            _group->setGroup(_g);
+        }
+        if (!_g->childItems().isEmpty())
+        {
+            items << _g;
+        }
+        else
+        {
+            delete _g;
+            super_groups.remove(_z_offset);
+        }
+        groups.clear();
     }
+    static QGraphicsItem * topParent(QGraphicsItem * _item)
+    {
+        QGraphicsItem * _parent = _item;
+        while (_parent->parentItem())
+        {
+            _parent = _parent->parentItem();
+        }
+        return _parent;
+    }
+
     void updateVisibility(double _scale, bool _exact)
     {
         scale = _scale;
@@ -782,7 +815,77 @@ struct S57_BuildScene::Data
         {
             return;
         }
+        if (super_groups.isEmpty())
+        {
+            return;
+        }
         const qint64 _i_scale = _scale;
+        QMap<qint64, QGraphicsItemGroup *>::iterator v_i = super_groups.end();
+        for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = super_groups.begin(); _i != super_groups.end(); _i++)
+        {
+            _i.value()->setVisible(false);
+            foreach (QGraphicsItem * _item, _i.value()->childItems())
+            {
+                _item->setVisible(false);
+            }
+            if (_i_scale < _i.key() && v_i == super_groups.end())
+            {
+                v_i = _i;
+                if (v_i != super_groups.begin())
+                {
+                    v_i--;
+                    v_i.value()->setVisible(true);
+                    break;
+                }
+            }
+        }
+        if (v_i == super_groups.end())
+        {
+            v_i = --super_groups.end();
+            v_i.value()->setVisible(true);
+        }
+        qDebug() << "visible layer" << v_i.key() << v_i.value()->childItems().count();
+        QGraphicsItem * visible_layer = v_i.value();
+        visible_layer->setVisible(true);
+
+        foreach (QGraphicsItem * _item, visible_layer->childItems())
+        {
+            _item->setVisible(_i_scale <= (int)(-_item->zValue()) && render_enabled);
+        }
+
+
+        /*
+        for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = ++super_groups.begin(); _i != super_groups.end(); _i++)
+        {
+            QMap<qint64, QGraphicsItemGroup *>::iterator _k = _i;
+            _k++;
+            for (; _k != super_groups.end(); _k++)
+            {
+                if (_i.value()->boundingRect().intersects(_k.value()->boundingRect()))
+                {
+                    if (_i.key() > _k.key() && _i.key() > _i_scale)
+                    {
+                        _i.value()->setVisible(false);
+                        _k.value()->setVisible(true);
+                    }
+                }
+            }
+        }
+        int visible_count = 0;
+        for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = super_groups.begin(); _i != super_groups.end(); _i++)
+        {
+            if (_i.value()->isVisible())
+            {
+                foreach (QGraphicsItem * _item, _i.value()->childItems())
+                {
+                    _item->setVisible(_i_scale <= (int)(-_item->zValue()) && render_enabled);
+                }
+                visible_count++;
+            }
+        }
+        qDebug() << "visible maps" << visible_count << ", invisible maps" << super_groups.count() - visible_count;
+        */
+        /*
         if (!_exact)
         {
             for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
@@ -797,6 +900,7 @@ struct S57_BuildScene::Data
                 _i.value()->setVisible(_i_scale == _i.key() && render_enabled);
             }
         }
+        */
     }
 };
 
@@ -829,6 +933,7 @@ void S57_BuildScene::clear()
 //        d->scene->clear();
         d->scene->setSceneRect(QRectF());
     }
+    d->super_groups.clear();
     d->groups.clear();
     d->items.clear();
     d->layers.clear();
@@ -942,9 +1047,12 @@ double S57_BuildScene::scale() const
 int S57_BuildScene::itemsCount() const
 {
     int _count = 0;
-    foreach (QGraphicsItem * _item, d->items)
+    foreach (QGraphicsItem * super_group_item, d->items)
     {
-        _count += _item->childItems().count();
+        foreach (QGraphicsItem * group_item, super_group_item->childItems())
+        {
+            _count += group_item->childItems().count();
+        }
     }
     return (_count);
 }
@@ -952,9 +1060,12 @@ int S57_BuildScene::itemsCount() const
 QList<QGraphicsItem *> S57_BuildScene::items() const
 {
     QList<QGraphicsItem *> _items;
-    foreach (QGraphicsItem * _item, d->items)
+    foreach (QGraphicsItem * super_group_item, d->items)
     {
-        _items << _item->childItems();
+        foreach (QGraphicsItem * group_item, super_group_item->childItems())
+        {
+            _items << group_item->childItems();
+        }
     }
     return _items;
 }

@@ -19,7 +19,7 @@
 
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11)
+    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11), radar(0)
 {
     ui->setupUi(this);
     ui->statusbar->addPermanentWidget(position_label = new QLabel(), 1);
@@ -52,6 +52,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionMouse_dragging->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("drag", true).toBool());
     on_actionMouse_dragging_triggered(ui->actionMouse_dragging->isChecked());
     ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
+    ui->actionMap_bound->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("map_bounds", false).toBool());
 
     _ag = new QActionGroup(this);
     ui->action_aspect_1_1->setActionGroup(_ag);
@@ -103,14 +104,18 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionRadar->setChecked(show_radar);
     on_actionRadar_triggered(show_radar);
 
-    qDebug() << "initial block size" << radar.blockSize();
-    radar_emu.resize(radar.blockSize() * radar.positionsCount());
-    for (int i = 0; i < radar.blockSize() * radar.positionsCount(); i++)
+    if (ui->menuRadar->isEnabled())
     {
-        radar_emu[i] = (qrand() & 0x7f);
-    }
+        radar = new S57_RadarModificator();
+        qDebug() << "initial block size" << radar->blockSize();
+        radar_emu.resize(radar->blockSize() * radar->positionsCount());
+        for (int i = 0; i < radar->blockSize() * radar->positionsCount(); i++)
+        {
+            radar_emu[i] = (qrand() & 0x7f);
+        }
 
-    setRadarFlags();
+        setRadarFlags();
+    }
 
     knots_group = new QActionGroup(this);
     knots_group->addAction(ui->action30_knots);
@@ -175,9 +180,9 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         return;
     }
 
-    if (ui->actionRadar->isChecked())
+    if (radar && ui->actionRadar->isChecked())
     {
-        scene->removeMod(& radar);
+        scene->removeMod(radar);
     }
 
     switch (mode)
@@ -203,6 +208,7 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         break;
     }
     builder.resetScale();
+    builder.setBoundingRectVisible(ui->actionMap_bound->isChecked());
     switch (mode)
     {
     case OpenMapFile:
@@ -228,9 +234,9 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     scene->fullView();
     builder.setRenderEnabled(re);
 
-    if (ui->actionRadar->isChecked())
+    if (radar && ui->actionRadar->isChecked())
     {
-        scene->addMod(& radar);
+        scene->addMod(radar);
     }
 
     progress->close();
@@ -496,9 +502,9 @@ void S57_DrawWindow::scaleChanged()
     {
         block_size = 4096;
     }
-    if (block_size != radar.blockSize())
+    if (radar && block_size != radar->blockSize())
     {
-        radar.setMetrics(block_size, 4096);
+        radar->setMetrics(block_size, 4096);
         qDebug() << "miles" << miles << "block_size set to" << block_size;
     }
 }
@@ -716,17 +722,17 @@ void S57_DrawWindow::timerEvent(QTimerEvent * te)
 {
     if (te->timerId() == radar_timer_id)
     {
-        if (ui->actionRadar->isChecked())
+        if (radar && ui->actionRadar->isChecked())
         {
             QPointF ct = ui->S57View->viewport()->rect().center();
 
             static int pos = -1;
-            const int block_size = radar.blockSize();
+            const int block_size = radar->blockSize();
         //    qDebug() << "block_size" << block_size << "pos" << pos;
             for (int k = 0; k < 128; k++)
             {
                 pos++;
-                if (pos >= radar.positionsCount())
+                if (pos >= radar->positionsCount())
                 {
                     pos = 0;
                 }
@@ -739,8 +745,8 @@ void S57_DrawWindow::timerEvent(QTimerEvent * te)
 
                 if (ui->actionTargets->isChecked())
                 {
-                    const int angle = pos * 360.0 / radar.positionsCount();
-                    const double radius = radar.screenRadius();
+                    const int angle = pos * 360.0 / radar->positionsCount();
+                    const double radius = radar->screenRadius();
                     foreach (S57_TargetModificator::Target target, targets.targets())
                     {
                         QLineF line(ct, ui->S57View->mapFromScene(target.pos));
@@ -757,11 +763,11 @@ void S57_DrawWindow::timerEvent(QTimerEvent * te)
                     }
                 }
 
-                radar.addData(v, pos);
+                radar->addData(v, pos);
             }
             if (radar_sector->isVisible())
             {
-                const QImage & img = radar.roi();
+                const QImage & img = radar->roi();
                 if (!img.size().isNull())
                 {
                     radar_sector->setPixmap(QPixmap::fromImage(img.scaled(radar_sector->size())));
@@ -795,7 +801,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         {
             scene->removeMod(& targets);
         }
-        scene->addMod(& radar);
+        if (radar)
+        {
+            scene->addMod(radar);
+        }
     }
     else
     {
@@ -807,7 +816,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         {
             scene->addMod(& targets);
         }
-        scene->removeMod(& radar);
+        if (radar)
+        {
+            scene->removeMod(radar);
+        }
         builder.setRenderEnabled(true);
     }
 }
@@ -819,7 +831,11 @@ void S57_DrawWindow::closeEvent(QCloseEvent *)
 
 void S57_DrawWindow::setRadarFlags()
 {
-    radar.setFlags((ui->actionRadarCircle->isChecked() ? S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarRay:0) |
+    if (!radar)
+    {
+        return;
+    }
+    radar->setFlags((ui->actionRadarCircle->isChecked() ? S57_RadarModificator::RadarCircle | S57_RadarModificator::RadarRay:0) |
                  (ui->actionRadarSector->isChecked() ? S57_RadarModificator::RadarSector | S57_RadarModificator::RadarSectorSelector:0) |
                  (ui->actionRadarCoasts->isChecked() ? S57_RadarModificator::RadarCoasts:0 )|
                  (ui->actionRadarRaycastCoasts->isChecked() ? S57_RadarModificator::RadarRaycastCoasts:0)   |
@@ -891,3 +907,8 @@ void S57_DrawWindow::on_actionReset_targets_triggered()
     createTargets();
 }
 
+
+void S57_DrawWindow::on_actionMap_bound_triggered(bool checked)
+{
+    QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("map_bounds", checked);
+}

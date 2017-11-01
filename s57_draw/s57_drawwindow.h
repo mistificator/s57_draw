@@ -58,8 +58,7 @@ private slots:
     void on_actionRadarHideMap_triggered(bool checked);
     void on_actionTargets_triggered(bool checked);
     void on_actionReset_targets_triggered();
-
-
+    void on_actionMap_bound_triggered(bool checked);
 private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
@@ -68,7 +67,7 @@ private:
     S57_BuildScene builder;
     S57_RulerModificator ruler;
     S57_GridModificator grid;
-    S57_RadarModificator radar;
+    S57_RadarModificator * radar;
     S57_TargetModificator targets;
     QLabel * radar_sector;
     int radar_timer_id, target_timer_id;

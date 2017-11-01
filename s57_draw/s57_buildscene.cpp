@@ -120,6 +120,8 @@ struct S57_BuildScene::Data
     QStringList layers;
     double scale;
     bool render_enabled;
+    bool br_visible;
+    QColor br_color;
     struct RegisterS57_Helper
     {
         RegisterS57_Helper()
@@ -129,7 +131,7 @@ struct S57_BuildScene::Data
         }
     };
 
-    Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0), render_enabled(true)
+    Data(const QString & _lookups_path = QString(), const QString & _symbols_path = QString()): scene(0), scale(0), render_enabled(true), br_visible(false)
     {
         static RegisterS57_Helper reg_s57;
         parse_styles(_lookups_path, _symbols_path);
@@ -780,11 +782,27 @@ struct S57_BuildScene::Data
             _g->setZValue(-_z_offset);
             _g->setFlag(QGraphicsItem::ItemHasNoContents);
         }
+        if (br_visible)
+        {
+            QPen br_pen(br_color, 0);
+            QRectF r;
+            foreach (QGraphicsItemGroup * _group, groups.values())
+            {
+                if (r.isEmpty())
+                {
+                    r = _group->boundingRect();
+                }
+                else
+                {
+                    r = r.united(_group->boundingRect());
+                }
+            }
+            QGraphicsRectItem * br = new QGraphicsRectItem(r);
+            br->setPen(br_pen);
+            items << br;
+        }
         foreach (QGraphicsItemGroup * _group, groups.values())
         {
-            QGraphicsRectItem * br = new QGraphicsRectItem(_group->boundingRect());
-            br->setPen(QPen(Qt::red, 0));
-            br->setGroup(_group);
             _group->setGroup(_g);
         }
         if (!_g->childItems().isEmpty())
@@ -1112,4 +1130,15 @@ void S57_BuildScene::setRenderEnabled(bool state)
 bool S57_BuildScene::isRenderEnabled() const
 {
     return d->render_enabled;
+}
+
+void S57_BuildScene::setBoundingRectVisible(bool state, QColor c)
+{
+    d->br_visible = state;
+    d->br_color = c;
+}
+
+bool S57_BuildScene::isBoundingRectVisible() const
+{
+    return d->br_visible;
 }

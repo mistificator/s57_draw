@@ -117,6 +117,7 @@
     <addaction name="actionMouse_dragging"/>
     <addaction name="actionTooltips"/>
     <addaction name="menuAspect_X_Y"/>
+    <addaction name="actionMap_bound"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -125,6 +126,9 @@
     <addaction name="actionExport_symbols"/>
    </widget>
    <widget class="QMenu" name="menuRadar">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Radar</string>
     </property>
@@ -444,6 +448,14 @@
   <action name="actionReset_targets">
    <property name="text">
     <string>Reset targets</string>
+   </property>
+  </action>
+  <action name="actionMap_bound">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Map bound</string>
    </property>
   </action>
  </widget>

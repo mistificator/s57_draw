@@ -74,6 +74,9 @@ public:
 	
     void setRenderEnabled(bool);
     bool isRenderEnabled() const;
+
+    void setBoundingRectVisible(bool, QColor c = Qt::red);
+    bool isBoundingRectVisible() const;
 private:
 	struct Data;
 	Data * d;

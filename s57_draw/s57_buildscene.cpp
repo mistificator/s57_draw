@@ -534,6 +534,7 @@ struct S57_BuildScene::Data
 			_z_offset = _ds->GetLayerByName("M_CSCL") ? get_attribute(_ds->GetLayerByName("M_CSCL")->GetNextFeature(), "CSCALE").toLongLong() : 0;
 		}
         qDebug() << "z_offset = " << _z_offset;
+        QRectF bounding_rect;
         for (int _idx = 0; _idx < _ds->GetLayerCount(); _idx++)
         {
             OGRLayer * _layer = _ds->GetLayer(_idx);
@@ -545,6 +546,7 @@ struct S57_BuildScene::Data
             }
             qDebug() << _idx << _layer_name;
             bool _ignore_group = (_layer_name == "DEPARE") || (_layer_name == "LNDARE");
+            bool _m_group = (_layer_name.startsWith("M_"));
             QGraphicsItem * _item;
             while(OGRFeature * _feat = _layer->GetNextFeature())
             {
@@ -564,8 +566,9 @@ struct S57_BuildScene::Data
                     style_struct _s = apply_rule(_feat, _layer_name);
                     const qint64 _scamin = get_attribute(_feat, "SCAMIN").toLongLong();
 					const QString _tooltip = _layer_name + "\nSCAMIN " + QString::number(_scamin) + "\nCSCL " + QString::number(_z_offset);
-                    if (((_scamin > 0 && _scamin < 0x7fffffff) || _ignore_group) && ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull())))
+                    if ((((_scamin > 0 && _scamin < 0x7fffffff) || _ignore_group) && ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull()))) || _m_group)
                     {
+                        _item = 0;
                         switch (_wkb)
                         {
                         case wkbPoint:
@@ -683,25 +686,40 @@ struct S57_BuildScene::Data
 								_sum_count++;
                             }
 //	                        _poly.append(_poly[0]);
-							_item = new QGraphicsPolygonItem(_poly);
-                            addToGroup(_scamin, _item);
-							((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
-							if (_poly.front() == _poly.back())
-							{
-								((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
-							}
-							_item->setZValue(_s.priority - _z_offset);
-							_item->setToolTip(_tooltip);
-                            if (!_s.symbol->isEmpty())
+                            if (!_m_group)
                             {
-                                _item = new QFixedPixmapItem();
+                                _item = new QGraphicsPolygonItem(_poly);
                                 addToGroup(_scamin, _item);
-                                _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
-                                _pixmap = check_complex_symbol(* _s.symbol);
-                                ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
-                                ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                _item->setZValue(20 + _s.priority - _z_offset);
-								_item->setToolTip(_tooltip);
+                                ((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
+                                if (_poly.front() == _poly.back())
+                                {
+                                    ((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
+                                }
+                                _item->setZValue(_s.priority - _z_offset);
+                                _item->setToolTip(_tooltip);
+                                if (!_s.symbol->isEmpty())
+                                {
+                                    _item = new QFixedPixmapItem();
+                                    addToGroup(_scamin, _item);
+                                    _item->setPos(_sum_x / _sum_count, -_sum_y / _sum_count);
+                                    _pixmap = check_complex_symbol(* _s.symbol);
+                                    ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
+                                    ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
+                                    _item->setZValue(20 + _s.priority - _z_offset);
+                                    _item->setToolTip(_tooltip);
+                                }
+                            }
+                            else
+                            {
+                                if (_layer_name == "M_NSYS")
+                                {
+                                    bounding_rect = _poly.boundingRect();
+                                    qDebug() << _layer_name << bounding_rect;
+                                }
+                                else
+                                {
+                                    qDebug() << _layer_name << _poly.boundingRect();
+                                }
                             }
                             break;
                         }
@@ -766,7 +784,10 @@ struct S57_BuildScene::Data
                             continue;
                             break;
                         }
-                        _item->setData(S57_BuildScene::ItemLayerNameKey, _layer_name);
+                        if (_item)
+                        {
+                            _item->setData(S57_BuildScene::ItemLayerNameKey, _layer_name);
+                        }
                     }
                 }
 				if (_feat != 0)
@@ -785,7 +806,7 @@ struct S57_BuildScene::Data
         if (br_visible)
         {
             QPen br_pen(br_color, 0);
-            QRectF r;
+            /*
             foreach (QGraphicsItemGroup * _group, groups.values())
             {
                 if (r.isEmpty())
@@ -796,8 +817,8 @@ struct S57_BuildScene::Data
                 {
                     r = r.united(_group->boundingRect());
                 }
-            }
-            QGraphicsRectItem * br = new QGraphicsRectItem(r);
+            }*/
+            QGraphicsRectItem * br = new QGraphicsRectItem(bounding_rect);
             br->setPen(br_pen);
             items << br;
         }

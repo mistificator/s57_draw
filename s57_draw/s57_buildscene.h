@@ -24,9 +24,11 @@ public:
     virtual ~S57_BuildScene();
     void setMercatorStretch(double ext_aspect);
 	void clear();
-   void setScene(QGraphicsScene * _scene);
+    void setScene(QGraphicsScene * _scene);
     QGraphicsScene * scene() const;
-    void build(const QString & _file_name);
+    QRectF boundingRect(const QString & _file_name) const;
+    QRectF build(const QString & _file_name);
+    void unbuild(const QString & _file_name);
 	void render();
 	void resetScale();
 	void fullView();
@@ -41,7 +43,7 @@ public:
 
     double scaleTo1(double _scale = 1.0, double _dot_mm = 0.25, double _km_in_deg = 78.715);
 
-    enum ItemKeys {ItemLayerNameKey = 1};
+    enum ItemKeys {ItemLayerNameKey = 1, ItemMapNameKey = 2};
 
     template <class T>
     QList<T *> items(QString _layer_name) const

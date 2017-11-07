@@ -518,21 +518,19 @@ struct S57_BuildScene::Data
         return (_g);
     }
 
-    QRectF build_s57(OGRDataSource * _ds)
+    S57_BuildScene::MetaInfo build_s57(OGRDataSource * _ds)
     {
+         S57_BuildScene::MetaInfo info;
 //        qDebug() << "We're in build_s57!";
         if (!_ds)
         {
-            return QRectF();
+            return info;
         }
+        info = metaInfo(_ds);
         QMap<qint64, QGraphicsItemGroup *> groups;
         const QString _map_name = QFileInfo(_ds->GetName()).absoluteFilePath();
         qDebug() << "Datasource has" << _ds->GetLayerCount() << "layers";
-        qint64 _z_offset = _ds->GetLayerByName("DSID") ? get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toLongLong() : 0;
-		if (_z_offset == 0)
-		{
-			_z_offset = _ds->GetLayerByName("M_CSCL") ? get_attribute(_ds->GetLayerByName("M_CSCL")->GetNextFeature(), "CSCALE").toLongLong() : 0;
-		}
+        qint64 _z_offset = info.scale;
         qDebug() << "z_offset = " << _z_offset;
         for (int _idx = 0; _idx < _ds->GetLayerCount(); _idx++)
         {
@@ -787,11 +785,10 @@ struct S57_BuildScene::Data
             _g->setZValue(-_z_offset);
             _g->setFlag(QGraphicsItem::ItemHasNoContents);
         }
-        const QRectF bounding_rect = boundingRect(_ds);
         if (br_visible)
         {
             QPen br_pen(br_color, 0);
-            QGraphicsRectItem * br = new QGraphicsRectItem(bounding_rect);
+            QGraphicsRectItem * br = new QGraphicsRectItem(info.boundingRect);
             br->setPen(br_pen);
             items << br;
         }
@@ -808,16 +805,22 @@ struct S57_BuildScene::Data
             delete _g;
             super_groups.remove(_z_offset);
         }
-        return bounding_rect;
+        return info;
     }
-    QRectF boundingRect(OGRDataSource * _ds) const
+    S57_BuildScene::MetaInfo metaInfo(OGRDataSource * _ds)
     {
 //        qDebug() << "We're in build_s57!";
-        QRectF bounding_rect;
+        S57_BuildScene::MetaInfo info;
         if (!_ds)
         {
-            return bounding_rect;
+            return info;
         }
+        qint64 _z_offset = _ds->GetLayerByName("DSID") ? get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toLongLong() : 0;
+        if (_z_offset == 0)
+        {
+            _z_offset = _ds->GetLayerByName("M_CSCL") ? get_attribute(_ds->GetLayerByName("M_CSCL")->GetNextFeature(), "CSCALE").toLongLong() : 0;
+        }
+        info.scale = _z_offset;
         if (OGRLayer * _layer = _ds->GetLayerByName("M_NSYS"))
         {
             _layer->ResetReading();
@@ -837,13 +840,13 @@ struct S57_BuildScene::Data
                             _r->getPoint(_idx, & _p1);
                             _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
                         }
-                        bounding_rect = _poly.boundingRect();
-                        qDebug() << "M_NSYS" << bounding_rect;
+                        info.boundingRect = _poly.boundingRect();
+                        qDebug() << "M_NSYS" << info.boundingRect;
                     }
                 }
             }
         }
-        return bounding_rect;
+        return info;
     }
     static QGraphicsItem * topParent(QGraphicsItem * _item)
     {
@@ -967,9 +970,9 @@ QGraphicsScene * S57_BuildScene::scene() const
     return d->scene;
 }
 
-QRectF S57_BuildScene::boundingRect(const QString & _file_name) const
+S57_BuildScene::MetaInfo S57_BuildScene::metaInfo(const QString & _file_name) const
 {
-    QRectF br;
+    S57_BuildScene::MetaInfo info;
     QString _saved_current = QDir::currentPath();
 
     OGRDataSource * _ds = 0;
@@ -989,7 +992,7 @@ QRectF S57_BuildScene::boundingRect(const QString & _file_name) const
 #else
         qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
 #endif
-        br = d->boundingRect(_ds);
+        info = d->metaInfo(_ds);
         delete _ds;
     }
     else
@@ -998,12 +1001,12 @@ QRectF S57_BuildScene::boundingRect(const QString & _file_name) const
     }
     QDir::setCurrent(_saved_current);
 
-    return br;
+    return info;
 }
 
-QRectF S57_BuildScene::build(const QString & _file_name)
+S57_BuildScene::MetaInfo S57_BuildScene::build(const QString & _file_name)
 {
-    QRectF br;
+    S57_BuildScene::MetaInfo info;
 
     QString _saved_current = QDir::currentPath();
     QDir::setCurrent(qApp->applicationDirPath() + "/s57/classes");
@@ -1025,7 +1028,7 @@ QRectF S57_BuildScene::build(const QString & _file_name)
 #else
         qDebug() << _file_name << "opened with" << _ds->GetDriver()->GetName();
 #endif
-        br = d->build_s57(_ds);
+        info = d->build_s57(_ds);
         delete _ds;
     }
     else
@@ -1034,7 +1037,7 @@ QRectF S57_BuildScene::build(const QString & _file_name)
     }
     QDir::setCurrent(_saved_current);
 
-    return br;
+    return info;
 }
 
 void S57_BuildScene::unbuild(const QString & _file_name)

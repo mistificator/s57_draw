@@ -26,8 +26,14 @@ public:
 	void clear();
     void setScene(QGraphicsScene * _scene);
     QGraphicsScene * scene() const;
-    QRectF boundingRect(const QString & _file_name) const;
-    QRectF build(const QString & _file_name);
+    struct MetaInfo
+    {
+        QRectF boundingRect;
+        qint64 scale;
+        MetaInfo(): scale(0) {}
+    };
+    MetaInfo metaInfo(const QString & _file_name) const;
+    MetaInfo build(const QString & _file_name);
     void unbuild(const QString & _file_name);
 	void render();
 	void resetScale();

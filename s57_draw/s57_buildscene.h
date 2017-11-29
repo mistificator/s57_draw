@@ -28,6 +28,7 @@ public:
     QGraphicsScene * scene() const;
     struct MetaInfo
     {
+        QString name;
         QRectF boundingRect;
         qint64 scale;
         MetaInfo(): scale(0) {}

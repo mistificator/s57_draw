@@ -115,7 +115,7 @@ struct S57_BuildScene::Data
         QString * category;
     };
     QMultiMap<QString, style_struct> p_style, l_style, a_style;
-    QMap<qint64, QGraphicsItemGroup *> super_groups;
+    QMap<qint64, QMap<QString, QGraphicsItemGroup *> > super_groups;
     QList<QGraphicsItem *> items;
     QStringList layers;
     double scale;
@@ -778,7 +778,7 @@ struct S57_BuildScene::Data
 				}
             }
         }
-        QGraphicsItemGroup * & _g = super_groups[_z_offset];
+        QGraphicsItemGroup * & _g = super_groups[_z_offset][info.name];
         if (!_g)
         {
             _g = new QGraphicsItemGroup();
@@ -803,7 +803,11 @@ struct S57_BuildScene::Data
         else
         {
             delete _g;
-            super_groups.remove(_z_offset);
+            super_groups[_z_offset].remove(info.name);
+            if (super_groups[_z_offset].isEmpty())
+            {
+                super_groups.remove(_z_offset);
+            }
         }
         return info;
     }
@@ -815,6 +819,7 @@ struct S57_BuildScene::Data
         {
             return info;
         }
+        info.name = _ds->GetName();
         qint64 _z_offset = _ds->GetLayerByName("DSID") ? get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toLongLong() : 0;
         if (_z_offset == 0)
         {
@@ -870,13 +875,16 @@ struct S57_BuildScene::Data
             return;
         }
         const qint64 _i_scale = _scale;
-        QMap<qint64, QGraphicsItemGroup *>::iterator v_i = super_groups.end();
-        for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = super_groups.begin(); _i != super_groups.end(); _i++)
+        QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator v_i = super_groups.end();
+        for (QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator _i = super_groups.begin(); _i != super_groups.end(); _i++)
         {
-            _i.value()->setVisible(false);
-            foreach (QGraphicsItem * _item, _i.value()->childItems())
+            foreach (QGraphicsItemGroup * _g, _i.value())
             {
-                _item->setVisible(false);
+                _g->setVisible(false);
+                foreach (QGraphicsItem * _item, _g->childItems())
+                {
+                    _item->setVisible(false);
+                }
             }
             if (_i_scale < _i.key() && v_i == super_groups.end())
             {
@@ -884,7 +892,6 @@ struct S57_BuildScene::Data
                 if (v_i != super_groups.begin())
                 {
                     v_i--;
-                    v_i.value()->setVisible(true);
                     break;
                 }
             }
@@ -892,16 +899,17 @@ struct S57_BuildScene::Data
         if (v_i == super_groups.end())
         {
             v_i = --super_groups.end();
-            v_i.value()->setVisible(true);
         }
-        qDebug() << "visible layer" << v_i.key() << v_i.value()->childItems().count();
-        QGraphicsItem * visible_layer = v_i.value();
-        visible_layer->setVisible(true);
-
-        foreach (QGraphicsItem * _item, visible_layer->childItems())
+        foreach (QGraphicsItemGroup * _g, v_i.value())
         {
-            _item->setVisible(_i_scale <= (int)(-_item->zValue()) && render_enabled);
+            qDebug() << "visible layer" << v_i.key() << _g->childItems().count();
+            _g->setVisible(true);
+            foreach (QGraphicsItem * _item, _g->childItems())
+            {
+                _item->setVisible(_i_scale <= (int)(-_item->zValue()) && render_enabled);
+            }
         }
+
 /*
         if (!_exact)
         {
@@ -1043,6 +1051,29 @@ S57_BuildScene::MetaInfo S57_BuildScene::build(const QString & _file_name)
 void S57_BuildScene::unbuild(const QString & _file_name)
 {
     const QString _fname_adj = QFileInfo(_file_name).absoluteFilePath();
+    for (QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator _i = d->super_groups.begin(); _i != d->super_groups.end();)
+    {
+        for (QMap<QString, QGraphicsItemGroup *>::iterator _k = _i->begin(); _k != _i->end(); )
+        {
+            if (_k.key() == _fname_adj)
+            {
+                d->scene->removeItem(* _k);
+                _k = _i->erase(_k);
+            }
+            else
+            {
+                _k++;
+            }
+        }
+        if (_i->isEmpty())
+        {
+            _i = d->super_groups.erase(_i);
+        }
+        else
+        {
+            _i++;
+        }
+    }
     for (QList<QGraphicsItem *>::iterator i = d->items.begin(); i != d->items.end();)
     {
         if ((* i)->data(S57_BuildScene::ItemMapNameKey).toString() == _fname_adj)

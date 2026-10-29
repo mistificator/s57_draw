@@ -31,17 +31,10 @@ HEADERS  +=\
         s57_buildscene.h \
         s52_conditional.h \
         lib_s57.h \
-        lib_prti99.h \
-    s52_fixeditem.h
+        s52_fixeditem.h
 
 DEFINES += \
         LIB_S57_DLL
-
-win32:LIBS +=\
-        ../s57_bin/lib_prti99.lib
-
-unix:LIBS +=\
-        ../s57_bin/lib_prti99.a
 
 include (ogr.pri)
 

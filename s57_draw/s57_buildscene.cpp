@@ -20,8 +20,6 @@
 #include <QMessageBox>
 #endif
 
-#include "lib_prti99.h"
-
 double mercator_sretch = 1.0;
 
 struct S57_BuildScene::Data
@@ -127,7 +125,6 @@ struct S57_BuildScene::Data
         RegisterS57_Helper()
         {
             RegisterOGRS57();
-            RegisterOGRPRTI99();
         }
     };
 

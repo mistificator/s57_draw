@@ -25,11 +25,9 @@ DEFINES += \
         LIB_S57_EXT_DLL
 
 win32:LIBS +=\
-        ../s57_bin/lib_prti99.lib \
         ../s57_bin/lib_s57.lib
 
 unix:LIBS +=\
-        ../s57_bin/lib_prti99.a \
         ../s57_bin/lib_s57.a
 
 include (ogr.pri)

@@ -25,13 +25,11 @@ FORMS    += \
 
 win32:LIBS +=\
             ../s57_bin/lib_s57.lib \
-            ../s57_bin/lib_s57_ext.lib \
-            ../s57_bin/lib_prti99.lib
+            ../s57_bin/lib_s57_ext.lib
 
 unix:LIBS +=\
             ../s57_bin/lib_s57.a \
-            ../s57_bin/lib_s57_ext.a \
-            ../s57_bin/lib_prti99.a
+            ../s57_bin/lib_s57_ext.a
 
 unix:QMAKE_LFLAGS += -ldl
 unix:QMAKE_CXXFLAGS += -std=c++11

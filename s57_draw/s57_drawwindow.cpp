@@ -143,7 +143,7 @@ void S57_DrawWindow::nextDir(const QString & _dir, bool _scan)
     {
         return;
     }
-    QStringList _files = QDir(_dir).entryList(QStringList() << "*.000" << "*.000.txt" << "*.000.prti99");
+    QStringList _files = QDir(_dir).entryList(QStringList() << "*.000" << "*.000.txt");
     foreach (const QString & _fn, _files)
     {
         if (!_scan)
@@ -404,7 +404,7 @@ void S57_DrawWindow::on_actionOpen_triggered()
                 this,
                 QObject::tr("Open S57 chart"),
                 QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
+                "S57 (*.000 *.000.txt)"
                 );
     openMaps(OpenMapFile, _fn);
 }
@@ -416,7 +416,7 @@ void S57_DrawWindow::on_actionAdd_triggered()
                 this,
                 QObject::tr("Add S57 chart"),
                 QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("path", qApp->applicationDirPath()).toString(),
-                "S57 & PRTI99 (*.000 *.000.prti99 *.000.txt)"
+                "S57 (*.000 *.000.txt)"
                 );
     openMaps(AddMapFile, _fn);
 }

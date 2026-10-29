@@ -18,12 +18,10 @@ HEADERS  +=\
             lib_s57.h
 
 win32:LIBS +=\
-            ../s57_bin/lib_s57.lib \
-            ../s57_bin/lib_prti99.lib
+            ../s57_bin/lib_s57.lib
 
 unix:LIBS +=\
-            ../s57_bin/lib_s57.a \
-            ../s57_bin/lib_prti99.a
+            ../s57_bin/lib_s57.a
 
 unix:QMAKE_LFLAGS += -ldl
 

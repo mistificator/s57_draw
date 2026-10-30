@@ -5,6 +5,7 @@
 #include <QString>
 #include <QDebug>
 #include <QPainter>
+#include <QPainterPath>
 #include <cmath>
 
 #define M 4
@@ -68,6 +69,7 @@ struct Position
 struct Rule
 {
     int             RCID;
+    bool            is_pattern;
     struct          {QByteArray       NM;       } name;
     union           {char             dummy1,     PADF,       SYDF;       } definition;
     union           {char             dummy2,     PATP,       dummy3;     } fillType;
@@ -77,6 +79,7 @@ struct Rule
     struct          {QByteArray       BTM;      } bitmap;
     struct          {QByteArray       CRF;      } colRef;
     struct          {QByteArray       VCT;      } vector;
+    Rule(): RCID(0), is_pattern(false) {}
 };
 
 struct S52color
@@ -175,6 +178,7 @@ struct S52_Symbol::Data
             QByteArray _cmd = _line.left(4).toUpper();
             if (_cmd == "SYMD")
             {
+                _rule.is_pattern = false;
                 _rule.name.NM = _line.mid(9, 8);
                 _rule.definition.SYDF = _line[17];
                 _rule.pos.symb.pivot_x.SYCL = _line.mid(18, 5).toInt();
@@ -187,6 +191,7 @@ struct S52_Symbol::Data
             }
             if (_cmd == "PATD")
             {
+                _rule.is_pattern = true;
                 _rule.name.NM = _line.mid(9, 8);
                 _rule.definition.PADF = _line[17];
                 _rule.pos.patt.minDist.PAMI = _line.mid(24, 5).toInt();
@@ -248,125 +253,270 @@ struct S52_Symbol::Data
     QImage render_raster(const QString & _scheme, const Rule & _rule)
     {
         const QMap<char, QRgb> & _cmap = create_colors(_scheme, _rule);
-        QImage _image(_rule.pos.symb.bnbox_w.SYHL, _rule.pos.symb.bnbox_h.SYVL, QImage::Format_ARGB32);
-        _image.fill(QColor(0, 0, 0, 0).rgba());
-        const int _count = _rule.bitmap.BTM.count();
-        qint32 * _pixels = reinterpret_cast<qint32 *>(_image.bits());
-        for (int _i = 0; _i < _count; _i++)
+        const int _w = _rule.pos.symb.bnbox_w.SYHL;
+        const int _h = _rule.pos.symb.bnbox_h.SYVL;
+        if (_w <= 0 || _h <= 0)
         {
-            _pixels[_i] = _cmap[_rule.bitmap.BTM[_i]];
+            return QImage();
         }
-        return (_image);
+
+        if (_rule.is_pattern)
+        {
+            QImage _image(_w, _h, QImage::Format_ARGB32);
+            _image.fill(QColor(0, 0, 0, 0).rgba());
+            const int _count = qMin(_rule.bitmap.BTM.count(), _w * _h);
+            qint32 * _pixels = reinterpret_cast<qint32 *>(_image.bits());
+            for (int _i = 0; _i < _count; _i++)
+            {
+                _pixels[_i] = _cmap[_rule.bitmap.BTM[_i]];
+            }
+            return _image;
+        }
+
+        const int _px = _rule.pos.symb.pivot_x.SYCL;
+        const int _py = _rule.pos.symb.pivot_y.SYRW;
+        const int _half_w = qMax(qAbs(_px), qAbs(_w - _px));
+        const int _half_h = qMax(qAbs(_py), qAbs(_h - _py));
+        const int _out_w = 2 * _half_w;
+        const int _out_h = 2 * _half_h;
+        if (_out_w <= 0 || _out_h <= 0)
+        {
+            return QImage();
+        }
+
+        QImage _image(_out_w, _out_h, QImage::Format_ARGB32);
+        _image.fill(QColor(0, 0, 0, 0).rgba());
+
+        const int _offset_x = _half_w - _px;
+        const int _offset_y = _half_h - _py;
+        const int _count = _rule.bitmap.BTM.size();
+
+        for (int _row = 0; _row < _h; _row++)
+        {
+            const int _dst_y = _offset_y + _row;
+            if (_dst_y < 0 || _dst_y >= _out_h)
+            {
+                continue;
+            }
+            qint32 * _scan = reinterpret_cast<qint32 *>(_image.scanLine(_dst_y));
+            for (int _col = 0; _col < _w; _col++)
+            {
+                const int _src_idx = _row * _w + _col;
+                if (_src_idx >= _count)
+                {
+                    break;
+                }
+                const int _dst_x = _offset_x + _col;
+                if (_dst_x >= 0 && _dst_x < _out_w)
+                {
+                    _scan[_dst_x] = _cmap[_rule.bitmap.BTM[_src_idx]];
+                }
+            }
+        }
+        return _image;
     }
-    void draw_element(QPainter & _p, QPolygonF & _poly, bool & _ci, bool & _fp, bool & _pm)
+
+    void flush_polyline(QPainter & _p, QPolygonF & _poly)
     {
         if (_poly.isEmpty())
         {
             return;
         }
-        if (_fp)
+        _p.setBrush(Qt::NoBrush);
+        if (_poly.count() == 1)
         {
-            _p.setBrush(_p.pen().color());
-            _fp = false;
-        }
-        if (_ci)
-        {
-            if (_poly.count() > 1)
-            {
-                const double _r = _poly[1].x();
-                _p.drawEllipse(_poly[0].x(), _poly[0].y(), _r, _r);
-            }
-            _ci = false;
-            _pm = false;
+            _p.drawPoint(_poly[0]);
         }
         else
-            if (_pm)
-            {
-                _p.drawPolygon(_poly);
-                _pm = false;
-            }
-            else
-            {
-                _p.drawPolyline(_poly);
-            }
+        {
+            _p.drawPolyline(_poly);
+        }
         _poly.clear();
     }
 
     QImage render_vector(const QString & _scheme, const Rule & _rule, double _scale_factor)
     {
         const QMap<char, QRgb> & _cmap = create_colors(_scheme, _rule);
-        int _max_width = 0, _width = 0;
-        const double _extra = 10.0;
+        const double _extra = 6.0;
         const double _w = _rule.pos.symb.bnbox_w.SYHL * _scale_factor;
         const double _h = _rule.pos.symb.bnbox_h.SYVL * _scale_factor;
         const double _x = _rule.pos.symb.bnbox_x.SBXC * _scale_factor;
         const double _y = _rule.pos.symb.bnbox_y.SBXR * _scale_factor;
-        QImage _image(_w + _extra, _h + _extra, QImage::Format_ARGB32);
+        const double _px = _rule.pos.symb.pivot_x.SYCL * _scale_factor;
+        const double _py = _rule.pos.symb.pivot_y.SYRW * _scale_factor;
+
+        const double _half_w = qMax(qAbs(_px - _x), qAbs((_x + _w) - _px)) + _extra;
+        const double _half_h = qMax(qAbs(_py - _y), qAbs((_y + _h) - _py)) + _extra;
+
+        QImage _image(qCeil(2.0 * _half_w), qCeil(2.0 * _half_h), QImage::Format_ARGB32);
         _image.fill(QColor(0, 0, 0, 0).rgba());
-        QPainter _p(& _image);
+        QPainter _p(&_image);
+        _p.setRenderHint(QPainter::Antialiasing, true);
+
+        const double _offset_x = _px - _half_w;
+        const double _offset_y = _py - _half_h;
+
         QPolygonF _poly;
-        bool _ci = false, _fp = false, _pm = false;
-        foreach (const QByteArray & _par, _rule.vector.VCT.split(';'))
+        QPainterPath _pm_path;
+        QPointF _cur_pt(0.0, 0.0);
+        QColor _cur_color(Qt::black);
+        int _alpha = 255;
+        int _width = 1;
+        bool _in_pm = false;
+
+        foreach (const QByteArray & _par_raw, _rule.vector.VCT.split(';'))
         {
-            if (_par.count() <= 2)
+            const QByteArray _par = _par_raw.trimmed();
+            if (_par.count() < 2)
             {
                 continue;
             }
             const QByteArray _cmd = _par.left(2).toUpper();
             if (_cmd == "SP")
             {
-                draw_element(_p, _poly, _ci, _fp, _pm);
-                _p.setPen(QColor(_cmap[_par[2]]));
-            }
-            else
-                if (_cmd == "SW")
+                if (!_in_pm)
                 {
-                    _width = _par.mid(2, 1).toInt();
-                    _p.setPen(QPen(_p.pen().color(), _width));
-                    if (_width > _max_width)
+                    flush_polyline(_p, _poly);
+                }
+                if (_par.count() > 2)
+                {
+                    _cur_color = QColor(_cmap[_par[2]]);
+                    _cur_color.setAlpha(_alpha);
+                    _p.setPen(QPen(_cur_color, _width));
+                }
+            }
+            else if (_cmd == "SW")
+            {
+                if (!_in_pm)
+                {
+                    flush_polyline(_p, _poly);
+                }
+                if (_par.count() > 2)
+                {
+                    _width = qMax(1, _par.mid(2).toInt());
+                    _p.setPen(QPen(_cur_color, _width));
+                }
+            }
+            else if (_cmd == "ST")
+            {
+                if (_par.count() > 2)
+                {
+                    const int _st = _par.mid(2).toInt();
+                    _alpha = qBound(0, 255 - _st * 64, 255);
+                    _cur_color.setAlpha(_alpha);
+                    _p.setPen(QPen(_cur_color, _width));
+                }
+            }
+            else if (_cmd == "PU")
+            {
+                if (_in_pm)
+                {
+                    if (_poly.count() > 1)
                     {
-                        _max_width = _width;
+                        _pm_path.addPolygon(_poly);
                     }
+                    _poly.clear();
                 }
                 else
-                    if (_cmd == "PU")
+                {
+                    flush_polyline(_p, _poly);
+                }
+                QList<QByteArray> _pt = _par.mid(2).split(',');
+                for (int _i = 1; _i < _pt.count(); _i += 2)
+                {
+                    _cur_pt = QPointF(_pt[_i - 1].toInt() * _scale_factor - _offset_x,
+                                      _pt[_i].toInt() * _scale_factor - _offset_y);
+                    _poly.append(_cur_pt);
+                }
+            }
+            else if (_cmd == "PD")
+            {
+                const QByteArray _coords = _par.mid(2);
+                if (_coords.isEmpty())
+                {
+                    _poly.append(_cur_pt);
+                }
+                else
+                {
+                    QList<QByteArray> _pt = _coords.split(',');
+                    for (int _i = 1; _i < _pt.count(); _i += 2)
                     {
-                        draw_element(_p, _poly, _ci, _fp, _pm);
-                        QList<QByteArray> _pt = _par.mid(2).split(',');
-                        for (int _i = 1; _i < _pt.count(); _i +=2 )
-                        {
-                            _poly.append(QPointF(_pt[_i - 1].toInt() * _scale_factor - _x, _pt[_i].toInt() * _scale_factor - _y));
-                        }
+                        _cur_pt = QPointF(_pt[_i - 1].toInt() * _scale_factor - _offset_x,
+                                          _pt[_i].toInt() * _scale_factor - _offset_y);
+                        _poly.append(_cur_pt);
                     }
-                    else
-                        if (_cmd == "PD")
-                        {
-                            QList<QByteArray> _pt = _par.mid(2).split(',');
-                            for (int _i = 1; _i < _pt.count(); _i +=2 )
-                            {
-                                _poly.append(QPointF(_pt[_i - 1].toInt() * _scale_factor - _x, _pt[_i].toInt() * _scale_factor - _y));
-                            }
-                        }
-                        else
-                            if (_cmd == "CI")
-                            {
-                                _ci = true;
-                                _poly.append(QPointF(_par.mid(2).toInt() * _scale_factor, 0));
-                            }
-                            else
-                                if (_cmd == "FP")
-                                {
-                                    _fp = true;
-                                }
-                                else
-                                    if (_cmd == "PM")
-                                    {
-                                        _pm = (_par[2] == '2');
-                                    }
+                }
+            }
+            else if (_cmd == "CI")
+            {
+                const double _r = _par.mid(2).toInt() * _scale_factor;
+                if (_in_pm)
+                {
+                    _pm_path.addEllipse(_cur_pt, _r, _r);
+                }
+                else
+                {
+                    flush_polyline(_p, _poly);
+                    _pm_path = QPainterPath();
+                    _pm_path.addEllipse(_cur_pt, _r, _r);
+                    _p.setBrush(Qt::NoBrush);
+                    _p.drawEllipse(_cur_pt, _r, _r);
+                }
+            }
+            else if (_cmd == "PM")
+            {
+                const char _mode = (_par.count() > 2) ? _par[2] : '0';
+                if (_mode == '0')
+                {
+                    flush_polyline(_p, _poly);
+                    _in_pm = true;
+                    _pm_path = QPainterPath();
+                    _pm_path.setFillRule(Qt::OddEvenFill);
+                    _poly.clear();
+                    _poly.append(_cur_pt);
+                }
+                else if (_mode == '1')
+                {
+                    if (_poly.count() > 1)
+                    {
+                        _pm_path.addPolygon(_poly);
+                        _pm_path.closeSubpath();
+                    }
+                    _poly.clear();
+                }
+                else if (_mode == '2')
+                {
+                    if (_poly.count() > 1)
+                    {
+                        _pm_path.addPolygon(_poly);
+                        _pm_path.closeSubpath();
+                    }
+                    _poly.clear();
+                    _in_pm = false;
+                }
+            }
+            else if (_cmd == "FP")
+            {
+                if (!_pm_path.isEmpty())
+                {
+                    _p.fillPath(_pm_path, QBrush(_cur_color));
+                }
+            }
+            else if (_cmd == "EP")
+            {
+                if (!_pm_path.isEmpty())
+                {
+                    _p.strokePath(_pm_path, _p.pen());
+                }
+            }
         }
-        draw_element(_p, _poly, _ci, _fp, _pm);
-        return (_image.copy(0, 0, _w + 2 * _max_width, _h + 2 * _max_width));
+        if (!_in_pm)
+        {
+            flush_polyline(_p, _poly);
+        }
+        return _image;
     }
+
     void set_sources(const QStringList & _list)
     {
         colors.clear();

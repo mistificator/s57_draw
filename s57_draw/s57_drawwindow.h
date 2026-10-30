@@ -45,8 +45,6 @@ private slots:
     void on_actionExport_whole_chart_triggered();
     void on_actionMouse_dragging_triggered(bool);
     void on_actionExport_symbols_triggered();
-    void on_action_aspect_1_1_triggered();
-    void on_action_aspect_1_2_triggered();
     void on_actionFullview_triggered();
     void on_actionTooltips_triggered(bool);
     void on_actionRadar_triggered(bool);
@@ -63,7 +61,7 @@ private:
     Ui::S57_DrawWindow * ui;
     S57_ExtendedGraphicsScene * scene;
     QLabel * position_label, * scale_label, * distance_label;
-    bool eventFilter(QObject *, QEvent *);
+    bool eventFilter(QObject *, QEvent *) override;
     S57_BuildScene builder;
     S57_RulerModificator ruler;
     S57_GridModificator grid;
@@ -92,8 +90,8 @@ private:
     void moveTargets();
     QMap<QString, QGraphicsItem *> targets_depth_cache, targets_land_cache;
 
-    void timerEvent(QTimerEvent *);
-    void closeEvent(QCloseEvent *);
+    void timerEvent(QTimerEvent *) override;
+    void closeEvent(QCloseEvent *) override;
 };
 
 #endif // S57_DrawWindow_H

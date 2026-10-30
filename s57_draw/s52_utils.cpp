@@ -6,35 +6,20 @@
 static double _MARparamVal[] = {
     0.0,      // NONE
     TRUE,     // SHOW_TEXT
-    TRUE,     // TWO_SHADES
-
-    8.0,     // SAFETY_CONTOUR
-
-    5.0,      // SAFETY_DEPTH
-
-    3.0,      // SHALLOW_CONTOUR
-    10.0,     // DEEP_CONTOUR
-
-    TRUE,    // SHALLOW_PATTERN
-
+    FALSE,    // TWO_SHADES (FALSE = 4 оттенка воды, как в OpenCPN)
+    10.0,     // SAFETY_CONTOUR (10 м — включает голубой для 18ft/30ft зон)
+    10.0,     // SAFETY_DEPTH
+    5.0,      // SHALLOW_CONTOUR (5 м — ярко-голубой для 6ft/12ft/18ft зон)
+    20.0,     // DEEP_CONTOUR (20 м — зоны до 60ft = 18.2м остаются голубыми DEPMD)
+    TRUE,     // SHALLOW_PATTERN
     FALSE,    // SHIPS_OUTLINE
     0.0,      // DISTANCE_TAGS
     0.0,      // TIME_TAGS
     TRUE,     // FULL_SECTORS
-    TRUE,     // SYMBOLIZED_BND
-
+    FALSE,    // SYMBOLIZED_BND
     TRUE,     // SYMPLIFIED_PNT
-
-    //    'D',      // S52_MAR_DISP_CATEGORY --DISPLAYBASE
-    //    'S',      // S52_MAR_DISP_CATEGORY --STANDARD
     'O',      // S52_MAR_DISP_CATEGORY --OTHER
-
-    //    0,        // S52_MAR_COLOR_PALETTE --DAY_BRIGHT
-    1,        // S52_MAR_COLOR_PALETTE --DAY_BLACKBACK
-    //    2,        // S52_MAR_COLOR_PALETTE --DAY_WHITEBACK
-    //    3,        // S52_MAR_COLOR_PALETTE --DUSK
-    //    4,        // S52_MAR_COLOR_PALETTE --NIGHT
-
+    0,        // S52_MAR_COLOR_PALETTE --DAY_BRIGHT
     16.0      // NUM
 };
 

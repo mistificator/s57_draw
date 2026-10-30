@@ -3,6 +3,7 @@
 #include "s52_symbol.h"
 #include "s52_conditional.h"
 #include "s52_fixeditem.h"
+#include "s52_utils.h"
 #include <QGraphicsItem>
 #include <QDir>
 #include <QMultiMap>
@@ -44,6 +45,7 @@ struct S57_BuildScene::Data
             condition = new QString();
             symbol = new QString();
             category = new QString();
+            texts = new QStringList();
             * ref_count = 0;
         }
         style_struct(const style_struct & _other)
@@ -56,6 +58,7 @@ struct S57_BuildScene::Data
             condition = _other.condition;
             symbol = _other.symbol;
             category = _other.category;
+            texts = _other.texts;
             ref_count = _other.ref_count;
             (* ref_count)++;
         }
@@ -70,6 +73,7 @@ struct S57_BuildScene::Data
                 delete condition;
                 delete symbol;
                 delete category;
+                delete texts;
                 delete ref_count;
             }
             else
@@ -92,6 +96,7 @@ struct S57_BuildScene::Data
             condition = _other.condition;
             symbol = _other.symbol;
             category = _other.category;
+            texts = _other.texts;
             ref_count = _other.ref_count;
             (*ref_count)++;
             return (*this);
@@ -111,6 +116,7 @@ struct S57_BuildScene::Data
             * _s.pen =         * pen;
             _s.priority =      priority;
             * _s.symbol =      * symbol;
+            * _s.texts =       * texts;
             return (_s);
         }
         mutable int * ref_count;
@@ -122,6 +128,7 @@ struct S57_BuildScene::Data
         QString * condition;
         QString * symbol;
         QString * category;
+        QStringList * texts;
     };
     QMultiMap<QString, style_struct> p_style, l_style, a_style;
     QMap<qint64, QMap<QString, QGraphicsItemGroup *> > super_groups;
@@ -183,93 +190,135 @@ struct S57_BuildScene::Data
         QMessageBox::information(0, _if, _str);
     }
 #endif
+
     void apply_draw_style(const QString & _draw_str, style_struct * _s)
     {
         QStringList _draw = _draw_str.split(";", S57_SKIP_EMPTY_PARTS);
         for (int _i = 0; _i < _draw.count(); _i++)
         {
-            QStringList _tok = _draw[_i].split(QRegularExpression("(\\W)"), S57_SKIP_EMPTY_PARTS);
-            //            qDebug() << "apply" << _tok;
+            const QString _raw_cmd = _draw[_i].trimmed();
+            if (_raw_cmd.startsWith("TX(", Qt::CaseInsensitive) ||
+                _raw_cmd.startsWith("TE(", Qt::CaseInsensitive))
+            {
+                if (!_s->texts->contains(_raw_cmd))
+                {
+                    _s->texts->append(_raw_cmd);
+                }
+                continue;
+            }
+            QStringList _tok = _raw_cmd.split(QRegularExpression("(\\W)"), S57_SKIP_EMPTY_PARTS);
             if (_tok.isEmpty())
             {
                 continue;
             }
-            if ((_tok[0].toUpper() == "LS"))
+            const QString _cmd = _tok[0].toUpper();
+            if (_cmd == "LS")
             {
                 if (_tok.count() > 3)
                 {
-                    *_s->pen = QColor(s52.color(_tok[3]));
-                    if (_tok[1].toUpper() == "DASH")
+                    const QRgb _rgb = s52.color(_tok[3]);
+                    QPen _pen(QColor(_rgb ? _rgb : qRgb(0, 0, 0)));
+                    _pen.setCosmetic(true);
+                    _pen.setWidth(qBound(1, _tok[2].toInt(), 2));
+                    const QString _style = _tok[1].toUpper();
+                    if (_style == "DASH")
                     {
-                        _s->pen->setStyle(Qt::DashLine);
+                        _pen.setDashPattern(QVector<qreal>() << 6.0 << 4.0);
+                    }
+                    else if (_style == "DOTT")
+                    {
+                        _pen.setDashPattern(QVector<qreal>() << 1.5 << 3.5);
                     }
                     else
-                    if (_tok[1].toUpper() == "DOTT")
                     {
-                        _s->pen->setStyle(Qt::DotLine);
+                        _pen.setStyle(Qt::SolidLine);
                     }
-                    _s->pen->setWidth(0);
+                    *_s->pen = _pen;
                 }
             }
-            else
-                if (_tok[0].toUpper() == "AC")
+            else if (_cmd == "AC")
+            {
+                if (_tok.count() > 1)
                 {
-                    if (_tok.count() > 1)
+                    const QString _col_code = _tok[1].toUpper();
+                    const QRgb _rgb = s52.color(_col_code);
+                    if (_rgb != 0)
                     {
-                        *_s->brush = QColor(s52.color(_tok[1]));
-                    }
-                }
-                else
-                if (_tok[0].toUpper() == "CS")
-                {
-                    if (_tok.count() > 1)
-                    {
-                        *_s->condition = QString(_tok[1]).toUpper();
-                    }
-                }
-                else
-                if (_tok[0].toUpper() == "SY")
-                {
-                    if (_tok.count() > 1)
-                    {
-                        const QString & _symbol = QString(_tok[1]).toUpper();
-                        if (!_s->symbol->contains(_symbol))
+                        QColor _col(_rgb);
+                        if (_tok.count() > 2)
                         {
-                            if (!_s->symbol->isEmpty())
+                            const int _st = _tok[2].toInt();
+                            if (_st > 0)
                             {
-                                _s->symbol->append(" ");
+                                _col.setAlpha(qBound(0, 255 - _st * 64, 255));
                             }
-                            _s->symbol->append(_symbol);
                         }
+                        *_s->brush = QBrush(_col);
                     }
+                    if (_col_code == "DEPDW")      _s->priority = 1;
+                    else if (_col_code == "DEPMD") _s->priority = 2;
+                    else if (_col_code == "DEPMS") _s->priority = 3;
+                    else if (_col_code == "DEPVS") _s->priority = 4;
+                    else if (_col_code == "DEPIT") _s->priority = 5;
                 }
-                else
-                if (_tok[0].toUpper() == "AP")
+            }
+            else if (_cmd == "CS")
+            {
+                if (_tok.count() > 1)
                 {
-                    if (_tok.count() > 1)
-                    {
-                        _s->brush->setTextureImage(s52.image(_tok[1]));
-                    }
+                    *_s->condition = QString(_tok[1]).toUpper();
                 }
-                else
-                if (_tok[0].toUpper() == "LC")
+            }
+            else if (_cmd == "SY")
+            {
+                if (_tok.count() > 1)
                 {
-                    if (_tok.count() > 1)
+                    const QString _symbol = QString(_tok[1]).toUpper();
+                    if (!_s->symbol->contains(_symbol))
                     {
-                        if (* _s->name != "CBLSUB")
+                        if (!_s->symbol->isEmpty())
                         {
-                            *_s->pen = QColor(s52.symbol_color(_tok[1]));
-                            _s->pen->setWidth(0);
+                            _s->symbol->append(" ");
                         }
+                        _s->symbol->append(_symbol);
                     }
                 }
+            }
+            else if (_cmd == "AP")
+            {
+                // nothing to do
+            }
+            else if (_cmd == "LC")
+            {
+                if (_tok.count() > 1)
+                {
+                    const QString _lc_name = _tok[1].toUpper();
+                    QRgb _rgb = s52.symbol_color(_lc_name);
+                    if (_rgb == 0)
+                    {
+                        _rgb = s52.color("CHMGD");
+                    }
+                    QPen _pen(QColor(_rgb ? _rgb : qRgb(192, 0, 192)));
+                    _pen.setCosmetic(true);
+                    _pen.setWidth(1);
+                    if (_lc_name.startsWith("LOWACC"))
+                    {
+                        _pen.setDashPattern(QVector<qreal>() << 2.0 << 3.0);
+                    }
+                    else if (!_lc_name.startsWith("HODATA"))
+                    {
+                        _pen.setDashPattern(QVector<qreal>() << 6.0 << 4.0);
+                    }
+                    *_s->pen = _pen;
+                }
+            }
         }
     }
 
     style_struct parse_lookup_line(QString _line, QMultiMap<QString, style_struct> * _style)
     {
-        _line = _line.replace(' ', "");
-        if (_line[0] == '*')
+        _line = _line.trimmed();
+        if (_line.isEmpty() || _line[0] == '*')
         {
             return style_struct();
         }
@@ -280,10 +329,10 @@ struct S57_BuildScene::Data
         }
         for (int _i = 0; _i < _p.count(); _i++)
         {
-            _p[_i] = _p[_i].replace("\"", "");
+            _p[_i] = _p[_i].replace("\"", "").trimmed();
         }
-        QStringList _attr = QString(_p[1]).split("|", S57_SKIP_EMPTY_PARTS);
-        QString _key = QString(_p[0]).toUpper();
+        QStringList _attr = QString(_p[1]).replace(' ', "").split("|", S57_SKIP_EMPTY_PARTS);
+        QString _key = QString(_p[0]).replace(' ', "").toUpper();
         style_struct * _s = 0;
         for (QMultiMap<QString, style_struct>::iterator _i = _style->begin(); _i != _style->end(); _i++)
         {
@@ -304,6 +353,7 @@ struct S57_BuildScene::Data
         apply_draw_style(_p[2], _s);
         return (* _s);
     }
+
     void parse_lookup_file(const QString & _name, QMultiMap<QString, style_struct> & _style)
     {
         QFile _dic(_name);
@@ -317,6 +367,7 @@ struct S57_BuildScene::Data
         }
         _dic.close();
     }
+
     void parse_lookups(QString _lookups_path = QString())
     {
         QString _saved_current = QDir::currentPath();
@@ -341,6 +392,7 @@ struct S57_BuildScene::Data
         }
         QDir::setCurrent(_saved_current);
     }
+
     void parse_styles(QString _lookups_path = QString(), QString _symbols_path = QString())
     {
         if (_symbols_path.isEmpty())
@@ -354,14 +406,14 @@ struct S57_BuildScene::Data
 
     QVariant get_attribute(OGRFeature * _feat, const QString & _attr_name)
     {
-		if (_feat == 0)
-		{
-			return QVariant();
-		}
-        int _idx = _feat->GetFieldIndex(_attr_name.toUpper().toLocal8Bit());
-        if (_idx < 0)
+        if (_feat == 0)
         {
-            return (QVariant());
+            return QVariant();
+        }
+        int _idx = _feat->GetFieldIndex(_attr_name.toUpper().toLocal8Bit());
+        if (_idx < 0 || !_feat->IsFieldSet(_idx))
+        {
+            return QVariant();
         }
         int _count = 0;
         switch (_feat->GetFieldDefnRef(_idx)->GetType())
@@ -406,6 +458,7 @@ struct S57_BuildScene::Data
         }
         return (QVariant());
     }
+
     style_struct apply_cs(OGRFeature * _feat, const QString & _layer_name, const style_struct & _s, int _collection_idx = 0)
     {
         if (!_s.condition->isEmpty())
@@ -426,6 +479,7 @@ struct S57_BuildScene::Data
         }
         return (_s);
     }
+
     style_struct apply_rule(OGRFeature * _feat, const QString & _layer_name, int _collection_idx = 0)
     {
         QList<style_struct> _list;
@@ -455,13 +509,21 @@ struct S57_BuildScene::Data
             bool _ok = true;
             foreach (const QString & _attr_name, *_s.attributes)
             {
-//                QVariant _attr_val = get_attribute(_feat, _attr_name);
-//				if (!_attr_val.isValid())
-                QVariant _attr_val = get_attribute(_feat, _attr_name.left(6));
-				if (_attr_val.toInt() == 0 || _attr_val.toInt() != _attr_name.mid(6).toInt())
+                const QString _attr_code = _attr_name.left(6);
+                const QString _expected_val = _attr_name.mid(6);
+                const QVariant _attr_val = get_attribute(_feat, _attr_code);
+                if (!_attr_val.isValid())
                 {
                     _ok = false;
                     break;
+                }
+                if (!_expected_val.isEmpty() && _expected_val != "?")
+                {
+                    if (_attr_val.toInt() != _expected_val.toInt())
+                    {
+                        _ok = false;
+                        break;
+                    }
                 }
             }
             if (_ok)
@@ -473,11 +535,36 @@ struct S57_BuildScene::Data
         {
             if (_s.attributes->isEmpty())
             {
+                continue;
+            }
+            bool _ok = true;
+            foreach (const QString & _attr_name, *_s.attributes)
+            {
+                const QString _attr_code = _attr_name.left(6);
+                const QString _expected_val = _attr_name.mid(6);
+                const QVariant _attr_val = get_attribute(_feat, _attr_code);
+                if (!_attr_val.isValid())
+                {
+                    _ok = false;
+                    break;
+                }
+                if (!_expected_val.isEmpty() && _expected_val != "?")
+                {
+                    if (_attr_val.toInt() != _expected_val.toInt())
+                    {
+                        _ok = false;
+                        break;
+                    }
+                }
+            }
+            if (_ok)
+            {
                 return (apply_cs(_feat, _layer_name, _s, _collection_idx));
             }
         }
         return (style_struct());
     }
+
     QPixmap * check_complex_symbol(const QString & _complex_symbol)
     {
         if (symbols.contains(_complex_symbol))
@@ -486,24 +573,34 @@ struct S57_BuildScene::Data
         }
         QList<const QPixmap *> _list;
         int _w = 0, _h = 0;
-        foreach (const QString & _symbol, _complex_symbol.split(" "))
+        foreach (const QString & _symbol, _complex_symbol.split(" ", S57_SKIP_EMPTY_PARTS))
         {
             if (symbols.contains(_symbol))
             {
                 const QPixmap & _px_ref = symbols[_symbol];
-                _w += _px_ref.width();
-                _h = qMax<int>(_h, _px_ref.height());
-                _list << & _px_ref;
+                if (!_px_ref.isNull())
+                {
+                    _w = qMax<int>(_w, _px_ref.width());
+                    _h = qMax<int>(_h, _px_ref.height());
+                    _list << & _px_ref;
+                }
             }
+        }
+        if (_w <= 0 || _h <= 0)
+        {
+            symbols[_complex_symbol] = QPixmap();
+            return (& symbols[_complex_symbol]);
         }
         QPixmap _px(_w, _h);
         _px.fill(QColor(0, 0, 0, 0));
         QPainter _painter(& _px);
-        _w = 0;
         foreach (const QPixmap * _px_ptr, _list)
         {
-            _painter.drawPixmap(_w, 0, _px_ptr->width(), _px_ptr->height(), * _px_ptr);
-            _w += _px_ptr->width();
+            _painter.drawPixmap((_w - _px_ptr->width()) / 2,
+                                (_h - _px_ptr->height()) / 2,
+                                _px_ptr->width(),
+                                _px_ptr->height(),
+                                * _px_ptr);
         }
         symbols[_complex_symbol] = _px;
         return (& symbols[_complex_symbol]);
@@ -511,19 +608,222 @@ struct S57_BuildScene::Data
 
     QGraphicsItem * addToGroup(qint64 _scamin, QGraphicsItem * _item, QMap<qint64, QGraphicsItemGroup *> & groups)
     {
-        if (_scamin == 0)
+        if (_scamin <= 0)
         {
             _scamin = 0x7fffffff;
         }
-        QGraphicsItemGroup * & _g = groups[_scamin];
+        _item->setData(S57_BuildScene::ItemScaminKey, _scamin);
+        QGraphicsItemGroup * & _g = groups[0];
         if (!_g)
         {
             _g = new QGraphicsItemGroup();
-            _g->setZValue(-_scamin);
+            _g->setZValue(0);
             _g->setFlag(QGraphicsItem::ItemHasNoContents);
         }
         _item->setGroup(_g);
         return (_g);
+    }
+
+    void addTextItems(OGRFeature * _feat, const style_struct & _s, const QPointF & _pos,
+                      qint64 _scamin, qint64 _z_offset, const QString & _tooltip,
+                      const QString & _layer_name, const QString & _map_name,
+                      QMap<qint64, QGraphicsItemGroup *> & groups)
+    {
+        if (_s.texts->isEmpty() || !S52_getMarinerParam(S52_MAR_SHOW_TEXT))
+        {
+            return;
+        }
+        const bool _is_geo_name = (_layer_name == "LNDARE" || _layer_name == "LNDRGN" ||
+                                   _layer_name == "SEAARE" || _layer_name == "BUAARE");
+        qint64 _text_scamin = _scamin;
+        if (_text_scamin <= 0 || _text_scamin >= 0x7fffffff)
+        {
+            if (_is_geo_name)
+            {
+                _text_scamin = (_z_offset > 0) ? (_z_offset * 3) : 0x7fffffff;
+            }
+            else
+            {
+                _text_scamin = (_z_offset > 0) ? _z_offset : 500000;
+            }
+        }
+
+        foreach (const QString & _cmd, *_s.texts)
+        {
+            const bool _is_te = _cmd.startsWith("TE(", Qt::CaseInsensitive);
+            const int _open = _cmd.indexOf('(');
+            const int _close = _cmd.lastIndexOf(')');
+            if (_open < 0 || _close <= _open)
+            {
+                continue;
+            }
+            const QString _inner = _cmd.mid(_open + 1, _close - _open - 1);
+            QStringList _args;
+            QString _cur;
+            bool _in_quotes = false;
+            for (int _ci = 0; _ci < _inner.length(); ++_ci)
+            {
+                const QChar _ch = _inner[_ci];
+                if (_ch == '\'')
+                {
+                    _in_quotes = !_in_quotes;
+                    _cur.append(_ch);
+                }
+                else if (_ch == ',' && !_in_quotes)
+                {
+                    _args.append(_cur.trimmed());
+                    _cur.clear();
+                }
+                else
+                {
+                    _cur.append(_ch);
+                }
+            }
+            _args.append(_cur.trimmed());
+
+            QString _text;
+            int _base_idx = 0;
+            if (_is_te)
+            {
+                if (_args.count() < 9)
+                {
+                    continue;
+                }
+                QString _fmt = _args[0];
+                if (_fmt.startsWith('\'') && _fmt.endsWith('\''))
+                {
+                    _fmt = _fmt.mid(1, _fmt.length() - 2);
+                }
+                if (_fmt.startsWith("by ", Qt::CaseInsensitive) ||
+                    _fmt.startsWith("bn ", Qt::CaseInsensitive))
+                {
+                    continue;
+                }
+                QString _attr_str = _args[1];
+                if (_attr_str.startsWith('\'') && _attr_str.endsWith('\''))
+                {
+                    _attr_str = _attr_str.mid(1, _attr_str.length() - 2);
+                }
+                const QStringList _attr_names = _attr_str.split(',', S57_SKIP_EMPTY_PARTS);
+                if (_attr_names.isEmpty())
+                {
+                    continue;
+                }
+                const QString _first_attr = _attr_names[0].trimmed();
+                const QVariant _val = get_attribute(_feat, _first_attr);
+                if (!_val.isValid() || _val.toString().isEmpty())
+                {
+                    continue;
+                }
+                QRegularExpression _re("%[^a-zA-Z]*([diouxXfFeEgGaAs])");
+                QRegularExpressionMatch _m = _re.match(_fmt);
+                const QChar _spec = _m.hasMatch() ? _m.captured(1)[0].toLower() : QChar();
+                if (_spec == 'f' || _spec == 'g' || _spec == 'e' || _spec == 'a')
+                {
+                    _text = QString::asprintf(_fmt.toUtf8().constData(), _val.toDouble());
+                }
+                else if (_spec == 'd' || _spec == 'i' || _spec == 'u' || _spec == 'x' || _spec == 'o')
+                {
+                    _text = QString::asprintf(_fmt.toUtf8().constData(), _val.toInt());
+                }
+                else if (_spec == 's')
+                {
+                    _text = QString::asprintf(_fmt.toUtf8().constData(), _val.toString().toUtf8().constData());
+                }
+                else
+                {
+                    _text = _val.toString();
+                }
+                _base_idx = 2;
+            }
+            else
+            {
+                if (_args.count() < 8)
+                {
+                    continue;
+                }
+                const QString _atisp = _args[0];
+                if (_atisp.startsWith('\'') && _atisp.endsWith('\''))
+                {
+                    _text = _atisp.mid(1, _atisp.length() - 2);
+                }
+                else
+                {
+                    const QVariant _val = get_attribute(_feat, _atisp);
+                    if (!_val.isValid())
+                    {
+                        continue;
+                    }
+                    _text = _val.toString().trimmed();
+                }
+                _base_idx = 1;
+            }
+
+            if (_text.isEmpty())
+            {
+                continue;
+            }
+
+            const int _hjust = _args[_base_idx].toInt();
+            const int _vjust = _args[_base_idx + 1].toInt();
+            QString _chars = _args[_base_idx + 3];
+            _chars.remove('\'');
+            const double _xoffs = _args[_base_idx + 4].toDouble();
+            const double _yoffs = _args[_base_idx + 5].toDouble();
+            const QString _col_name = _args[_base_idx + 6];
+
+            int _pt_size = (_chars.length() >= 5) ? _chars.mid(3, 2).toInt() : 10;
+            if (_pt_size <= 0) _pt_size = 10;
+            const bool _bold = (_chars.length() >= 2 && _chars[1].digitValue() >= 6);
+
+            QFont _font("Arial", _pt_size, _bold ? QFont::Bold : QFont::Normal);
+            QFontMetrics _fm(_font);
+            const QRect _br = _fm.boundingRect(_text);
+            const int _tw = qMax(1, _br.width() + 4);
+            const int _th = qMax(1, _fm.height());
+            const double _char_w = _fm.averageCharWidth();
+            const double _char_h = _fm.capHeight() > 0 ? _fm.capHeight() : _fm.ascent();
+
+            double _tx = _xoffs * _char_w;
+            double _ty = _yoffs * _char_h;
+            if (_hjust == 1)      _tx -= _tw / 2.0;
+            else if (_hjust == 2) _tx -= _tw;
+            if (_vjust == 1)      _ty -= _th;
+            else if (_vjust == 2) _ty -= _th / 2.0;
+
+            const QString _cache_key = QString("TXT_%1_%2_%3_%4_%5_%6_%7")
+                                           .arg(_text).arg(_hjust).arg(_vjust).arg(_chars).arg(_xoffs).arg(_yoffs).arg(_col_name);
+
+            if (!symbols.contains(_cache_key))
+            {
+                const int _half_w = qCeil(qMax(qAbs(_tx), qAbs(_tx + _tw))) + 2;
+                const int _half_h = qCeil(qMax(qAbs(_ty), qAbs(_ty + _th))) + 2;
+
+                QPixmap _px(2 * _half_w, 2 * _half_h);
+                _px.fill(QColor(0, 0, 0, 0));
+                QPainter _p(&_px);
+                _p.setFont(_font);
+                const QRgb _rgb = s52.color(_col_name);
+                _p.setPen(QColor(_rgb ? _rgb : qRgb(0, 0, 0)));
+                _p.drawText(QRectF(_half_w + _tx, _half_h + _ty, _tw, _th),
+                            Qt::AlignCenter | Qt::TextDontClip, _text);
+                _p.end();
+                symbols[_cache_key] = _px;
+            }
+
+            QPixmap * _px_ptr = &symbols[_cache_key];
+            QFixedPixmapItem * _t_item = new QFixedPixmapItem();
+            addToGroup(_text_scamin, _t_item, groups);
+            _t_item->setPos(_pos);
+            _t_item->setScreenSize(_px_ptr->size());
+            _t_item->setPixmap(_px_ptr);
+            _t_item->setZValue((_is_geo_name ? 35 : 30) + _s.priority);
+            _t_item->setToolTip(_tooltip);
+            _t_item->setData(S57_BuildScene::ItemLayerNameKey, _layer_name);
+            _t_item->setData(S57_BuildScene::ItemMapNameKey, _map_name);
+            _t_item->setData(S57_BuildScene::ItemIsTextKey, true);
+            _t_item->setData(S57_BuildScene::ItemTextRectKey, QRectF(_tx, _ty, _tw, _th));
+        }
     }
 
     S57_BuildScene::MetaInfo build_s57(OGRDataSource * _ds)
@@ -538,21 +838,25 @@ struct S57_BuildScene::Data
         QMap<qint64, QGraphicsItemGroup *> groups;
         const QString _map_name = QFileInfo(_ds->GetName()).absoluteFilePath();
         qDebug() << "Datasource has" << _ds->GetLayerCount() << "layers";
-        qint64 _z_offset = info.scale;
-        qDebug() << "z_offset = " << _z_offset;
         for (int _idx = 0; _idx < _ds->GetLayerCount(); _idx++)
         {
             OGRLayer * _layer = _ds->GetLayer(_idx);
             _layer->ResetReading();
             QString _layer_name = QString(_layer->GetLayerDefn()->GetName()).toUpper();
+            if (_layer_name.startsWith("M_") || _layer_name == "DSID")
+            {
+                continue;
+            }
             if (!layers.contains(_layer_name))
             {
                 layers << _layer_name;
             }
             qDebug() << _idx << _layer_name;
-            bool _ignore_group = (_layer_name == "DEPARE") || (_layer_name == "LNDARE");
+            bool _ignore_group = (_layer_name == "DEPARE") || (_layer_name == "LNDARE") ||
+                                 (_layer_name == "DRGARE") || (_layer_name == "LAKARE") ||
+                                 (_layer_name == "COALNE");
             QGraphicsItem * _item;
-            while(OGRFeature * _feat = _layer->GetNextFeature())
+            while (OGRFeature * _feat = _layer->GetNextFeature())
             {
                 if (OGRGeometry * _geom = _feat->GetGeometryRef())
                 {
@@ -562,15 +866,31 @@ struct S57_BuildScene::Data
                     QPolygonF _poly;
                     OGRLinearRing * _r;
                     QPixmap * _pixmap;
-					QPainterPath path;
-					QVector<QPolygonF> _mpoly;
+                    QPainterPath path;
+                    QVector<QPolygonF> _mpoly;
                     double _sum_x, _sum_y;
-					int _sum_count;
+                    int _sum_count;
                     const int _wkb = wkbFlatten(_geom->getGeometryType());
                     style_struct _s = apply_rule(_feat, _layer_name);
-                    const qint64 _scamin = get_attribute(_feat, "SCAMIN").toLongLong();
-					const QString _tooltip = _layer_name + "\nSCAMIN " + QString::number(_scamin) + "\nCSCL " + QString::number(_z_offset);
-                    if ((((_scamin > 0 && _scamin < 0x7fffffff) || _ignore_group) && ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull()))))
+                    double _z_prio = _s.priority;
+                    if (_layer_name == "DEPARE" || _layer_name == "DRGARE")
+                    {
+                        const double _d1 = get_attribute(_feat, "DRVAL1").toDouble();
+                        _z_prio = 1.0 + qBound(0.0, (1000.0 - _d1) / 2000.0, 0.9);
+                    }
+                    else if (_layer_name == "LNDARE")
+                    {
+                        _z_prio = qMax<double>(_s.priority, 2.0);
+                    }
+                    const qint64 _raw_scamin = get_attribute(_feat, "SCAMIN").toLongLong();
+                    const qint64 _scamin = _ignore_group ? 0 : _raw_scamin;
+                    const QString _objnam = get_attribute(_feat, "OBJNAM").toString();
+                    const QString _tooltip = _layer_name +
+                                             (_objnam.isEmpty() ? QString() : ("\n" + _objnam)) +
+                                             "\nSCAMIN " + QString::number(_scamin) +
+                                             "\nCSCL " + QString::number(info.scale);
+                    if ((((_scamin >= 0 && _scamin < 0x7fffffff) || _ignore_group) &&
+                         ((*_s.pen != Qt::NoPen) || (*_s.brush != Qt::NoBrush) || (!_s.symbol->isNull()) || (!_s.texts->isEmpty()))))
                     {
                         _item = 0;
                         switch (_wkb)
@@ -585,9 +905,10 @@ struct S57_BuildScene::Data
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                _item->setZValue(20 + _s.priority - _z_offset);
+                                _item->setZValue(20.0 + _z_prio);
 								_item->setToolTip(_tooltip);
                             }
+                            addTextItems(_feat, _s, QPointF(((OGRPoint *)_geom)->getX(), -((OGRPoint *)_geom)->getY()*mercator_sretch), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                             break;
                         }
                         case wkbMultiPoint:
@@ -604,9 +925,10 @@ struct S57_BuildScene::Data
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                     ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                    _item->setZValue(20 + _s.priority - _z_offset);
+                                    _item->setZValue(20.0 + _z_prio);
                                     _item->setToolTip(_tooltip);
                                 }
+                                addTextItems(_feat, _s, QPointF(((OGRPoint *)((OGRMultiPoint *)_geom)->getGeometryRef(_idx))->getX(), -((OGRPoint *)((OGRMultiPoint *)_geom)->getGeometryRef(_idx))->getY()*mercator_sretch), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                                 if (_idx + 1 < _num_geoms)
                                 {
                                     _s = apply_rule(_feat, _layer_name, _idx + 1);
@@ -630,7 +952,7 @@ struct S57_BuildScene::Data
                             _item = new QGraphicsPathItem(path);
                             addToGroup(_scamin, _item, groups);
                             ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
-                            _item->setZValue(10 + _s.priority - _z_offset);
+                            _item->setZValue(10.0 + _z_prio);
 							_item->setToolTip(_tooltip);
                             if (!_s.symbol->isEmpty())
                             {
@@ -640,9 +962,10 @@ struct S57_BuildScene::Data
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                _item->setZValue(20 + _s.priority - _z_offset);
+                                _item->setZValue(20.0 + _z_prio);
 								_item->setToolTip(_tooltip);
                             }
+                            addTextItems(_feat, _s, path.pointAtPercent(0.5), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                             break;
                         }
                         case wkbMultiLineString:
@@ -664,7 +987,7 @@ struct S57_BuildScene::Data
                                 _item = new QGraphicsPathItem(path);
                                 addToGroup(_scamin, _item, groups);
                                 ((QGraphicsPathItem *)_item)->setPen(*_s.pen);
-                                _item->setZValue(10 + _s.priority - _z_offset);
+                                _item->setZValue(10.0 + _z_prio);
 								_item->setToolTip(_tooltip);
                                 if (!_s.symbol->isEmpty())
                                 {
@@ -674,9 +997,10 @@ struct S57_BuildScene::Data
                                     _pixmap = check_complex_symbol(* _s.symbol);
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                     ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                    _item->setZValue(20 + _s.priority - _z_offset);
+                                   _item->setZValue(20.0 + _z_prio);
 									_item->setToolTip(_tooltip);
                                 }
+                                addTextItems(_feat, _s, path.pointAtPercent(0.5), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                                 if (_idx + 1 < _num_geoms)
                                 {
                                     _s = apply_rule(_feat, _layer_name, _idx + 1);
@@ -687,7 +1011,12 @@ struct S57_BuildScene::Data
                         case wkbPolygon:
                         {
                             _poly.clear();
-                            _r = ((OGRPolygon *)_geom)->getExteriorRing();
+                            OGRPolygon * _ogr_poly = (OGRPolygon *)_geom;
+                            _r = _ogr_poly->getExteriorRing();
+                            if (!_r || _r->getNumPoints() < 3)
+                            {
+                                break;
+                            }
                             _sum_x = 0; _sum_y = 0; _sum_count = 0;
                             for (int _idx = 0; _idx < _r->getNumPoints(); _idx++)
                             {
@@ -695,17 +1024,29 @@ struct S57_BuildScene::Data
                                 _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
                                 _sum_x += _p1.getX();
                                 _sum_y += _p1.getY()*mercator_sretch;
-								_sum_count++;
+                                _sum_count++;
                             }
-//	                        _poly.append(_poly[0]);
+                            // _poly.append(_poly[0]);
+                            if (_layer_name == "DEPARE" && _ogr_poly->getNumInteriorRings() > 0)
+                            {
+                                for (int _ir = 0; _ir < _ogr_poly->getNumInteriorRings(); ++_ir)
+                                {
+                                    OGRLinearRing * _inner = _ogr_poly->getInteriorRing(_ir);
+                                    if (!_inner || _inner->getNumPoints() < 3) continue;
+                                    QPolygonF _hole;
+                                    for (int _p_idx = 0; _p_idx < _inner->getNumPoints(); ++_p_idx)
+                                    {
+                                        _inner->getPoint(_p_idx, &_p1);
+                                        _hole.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
+                                    }
+                                    _poly = _poly.subtracted(_hole);
+                                }
+                            }
                             _item = new QGraphicsPolygonItem(_poly);
                             addToGroup(_scamin, _item, groups);
                             ((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
-                            if (_poly.front() == _poly.back())
-                            {
-                                ((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
-                            }
-                            _item->setZValue(_s.priority - _z_offset);
+                            ((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
+                            _item->setZValue(_z_prio);
                             _item->setToolTip(_tooltip);
                             if (!_s.symbol->isEmpty())
                             {
@@ -715,8 +1056,12 @@ struct S57_BuildScene::Data
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                _item->setZValue(20 + _s.priority - _z_offset);
+                                _item->setZValue(20.0 + _z_prio);
                                 _item->setToolTip(_tooltip);
+                            }
+                            if (_sum_count > 0)
+                            {
+                                addTextItems(_feat, _s, QPointF(_sum_x / _sum_count, -_sum_y / _sum_count), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                             }
                             break;
                         }
@@ -756,7 +1101,7 @@ struct S57_BuildScene::Data
 									((QGraphicsPolygonItem *)_item)->setPen(*_s.pen);
 //									((QGraphicsPolygonItem *)_item)->setPen(QColor(Qt::red));								
 									((QGraphicsPolygonItem *)_item)->setBrush(*_s.brush);
-									_item->setZValue(_s.priority - _z_offset);
+                                    _item->setZValue(_z_prio);
 									_item->setToolTip(_tooltip);
 
 									_contigous = _idx + 1;
@@ -771,8 +1116,12 @@ struct S57_BuildScene::Data
                                 _pixmap = check_complex_symbol(* _s.symbol);
                                 ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                 ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
-                                _item->setZValue(20 + _s.priority - _z_offset);
+                                _item->setZValue(20.0 + _z_prio);
 								_item->setToolTip(_tooltip);
+                            }
+                            if (_sum_count > 0)
+                            {
+                                addTextItems(_feat, _s, QPointF(_sum_x / _sum_count, -_sum_y / _sum_count), _scamin, info.scale, _tooltip, _layer_name, _map_name, groups);
                             }
                             _s = apply_rule(_feat, _layer_name/*, _idx*/);                           
                             break;
@@ -793,6 +1142,11 @@ struct S57_BuildScene::Data
 	                OGRFeature::DestroyFeature(_feat);
 				}
             }
+        }
+        qint64 _z_offset = info.scale;
+        if (_z_offset <= 0)
+        {
+            _z_offset = 10000000;
         }
         QGraphicsItemGroup * & _g = super_groups[_z_offset][info.name];
         if (!_g)
@@ -878,7 +1232,9 @@ struct S57_BuildScene::Data
                                 _r->getPoint(_idx, &_p1);
                                 _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
                             }
-                            info.boundingRect = _poly.boundingRect();
+                            info.boundingRect = info.boundingRect.isNull()
+                                                    ? _poly.boundingRect()
+                                                    : info.boundingRect.united(_poly.boundingRect());
                             qDebug() << "M_NSYS" << info.boundingRect;
                         }
                     }
@@ -898,69 +1254,84 @@ struct S57_BuildScene::Data
         return _parent;
     }
 
-    void updateVisibility(double _scale, bool /*_exact*/)
+    void updateVisibility(double _scale, bool _exact)
     {
         scale = _scale;
-        if (!scene)
+        if (!scene || super_groups.isEmpty())
         {
             return;
         }
-        if (super_groups.isEmpty())
+        const qint64 _i_scale = static_cast<qint64>(_scale);
+        QList<QGraphicsItem *> _visible_texts;
+
+        const qint64 _max_cscl = super_groups.lastKey();
+        for (QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator _i = super_groups.begin(); _i != super_groups.end(); ++_i)
         {
-            return;
-        }
-        const qint64 _i_scale = _scale;
-        QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator v_i = super_groups.end();
-        for (QMap<qint64, QMap<QString, QGraphicsItemGroup *> >::iterator _i = super_groups.begin(); _i != super_groups.end(); _i++)
-        {
+            const qint64 _map_cscl = _i.key();
+            const bool _map_vis = render_enabled && (_map_cscl == _max_cscl || _i_scale <= _map_cscl * 4);
             foreach (QGraphicsItemGroup * _g, _i.value())
             {
-                _g->setVisible(false);
-                foreach (QGraphicsItem * _item, _g->childItems())
+                _g->setVisible(_map_vis);
+                if (!_map_vis)
                 {
-                    _item->setVisible(false);
+                    continue;
                 }
-            }
-            if (_i_scale < _i.key() && v_i == super_groups.end())
-            {
-                v_i = _i;
-                if (v_i != super_groups.begin())
+                foreach (QGraphicsItem * _group_item, _g->childItems())
                 {
-                    v_i--;
-                    break;
+                    _group_item->setVisible(true);
+                    foreach (QGraphicsItem * _leaf, _group_item->childItems())
+                    {
+                        const qint64 _item_scamin = _leaf->data(S57_BuildScene::ItemScaminKey).toLongLong();
+                        const bool _vis = _exact ? (_item_scamin == _i_scale) : (_i_scale <= _item_scamin);
+                        _leaf->setVisible(_vis);
+                        if (_vis && !_exact && _leaf->data(S57_BuildScene::ItemIsTextKey).toBool())
+                        {
+                            _visible_texts.append(_leaf);
+                        }
+                    }
                 }
-            }
-        }
-        if (v_i == super_groups.end())
-        {
-            v_i = --super_groups.end();
-        }
-        foreach (QGraphicsItemGroup * _g, v_i.value())
-        {
-            qDebug() << "visible layer" << v_i.key() << _g->childItems().count();
-            _g->setVisible(true);
-            foreach (QGraphicsItem * _item, _g->childItems())
-            {
-                _item->setVisible(_i_scale <= (int)(-_item->zValue()) && render_enabled);
             }
         }
 
-/*
-        if (!_exact)
+        if (!_visible_texts.isEmpty() && !scene->views().isEmpty())
         {
-            for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
+            QGraphicsView * _view = scene->views().first();
+            const double _m11 = _view->transform().m11();
+            const double _m22 = _view->transform().m22();
+            if (_m11 > 0.0 && _m22 > 0.0)
             {
-                _i.value()->setVisible(_i_scale <= _i.key() && render_enabled);
+                std::sort(_visible_texts.begin(), _visible_texts.end(),
+                          [](const QGraphicsItem * a, const QGraphicsItem * b) {
+                              return a->zValue() > b->zValue();
+                          });
+                QVector<QRectF> _occupied;
+                _occupied.reserve(_visible_texts.size());
+                foreach (QGraphicsItem * _t_item, _visible_texts)
+                {
+                    const QPointF _px_pos(_t_item->pos().x() * _m11, _t_item->pos().y() * _m22);
+                    const QRectF _box = _t_item->data(S57_BuildScene::ItemTextRectKey).toRectF()
+                                            .translated(_px_pos)
+                                            .adjusted(-2.0, -2.0, 2.0, 2.0);
+                    bool _collision = false;
+                    for (int _k = 0; _k < _occupied.size(); ++_k)
+                    {
+                        if (_occupied[_k].intersects(_box))
+                        {
+                            _collision = true;
+                            break;
+                        }
+                    }
+                    if (_collision)
+                    {
+                        _t_item->setVisible(false);
+                    }
+                    else
+                    {
+                        _occupied.append(_box);
+                    }
+                }
             }
         }
-        else
-        {
-            for (QMap<qint64, QGraphicsItemGroup *>::iterator _i = groups.begin(); _i != groups.end(); _i++)
-            {
-                _i.value()->setVisible(_i_scale == _i.key() && render_enabled);
-            }
-        }
-        */
     }
 };
 
@@ -1234,10 +1605,20 @@ double S57_BuildScene::scaleTo1(double _scale, double _dot_mm, double _km_in_deg
         return 1.0;
     }
     QGraphicsView * view = d->scene->views().at(0);
+    const int vp_h = view->viewport()->height();
+    if (vp_h <= 0)
+    {
+        return 1.0;
+    }
     const QPointF _top_left = view->mapToScene(0, 0);
-    const QPointF _bottom_right = view->mapToScene(view->viewport()->width(), view->viewport()->height());
-    const double _mm = qMax(view->viewport()->width(), view->viewport()->height()) * _dot_mm;
-    const double _degs = qMax(qAbs(_bottom_right.x() - _top_left.x()), qAbs(_bottom_right.y() - _top_left.y()));
+    const QPointF _bottom_right = view->mapToScene(view->viewport()->width(), vp_h);
+
+    const double dot_mm = (_dot_mm > 0.0)
+                              ? _dot_mm
+                              : (view->logicalDpiY() > 0 ? (25.4 / view->logicalDpiY()) : 0.25);
+
+    const double _mm = vp_h * dot_mm;
+    const double _degs = qAbs(_bottom_right.y() - _top_left.y());
     const double _new_degs = _scale * _mm / (_km_in_deg * 1000000.0);
     return _degs / _new_degs;
 }

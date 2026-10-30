@@ -123,9 +123,9 @@ struct S52_Symbol::Data
         double _dG = ( _X * tmat[1][0] ) + ( _Y * tmat[1][1] ) + ( _Z * tmat[1][2] );
         double _dB = ( _X * tmat[2][0] ) + ( _Y * tmat[2][1] ) + ( _Z * tmat[2][2] );
         //       Arbitraril_Y clip the luminance values to 100
-        _dR = qMin<double>(_dR, 100) / 100;
-        _dG = qMin<double>(_dG, 100) / 100;
-        _dB = qMin<double>(_dB, 100) / 100;
+        _dR = qBound<double>(0.0, _dR, 100.0) / 100.0;
+        _dG = qBound<double>(0.0, _dG, 100.0) / 100.0;
+        _dB = qBound<double>(0.0, _dB, 100.0) / 100.0;
         //       And scale
 		_dR = ::pow ( _dR, 1.0 / c_gamma );
         _dG = ::pow ( _dG, 1.0 / c_gamma );
@@ -421,28 +421,25 @@ struct S52_Symbol::Data
     }
 };
 
-S52_Symbol::S52_Symbol(): d(new Data())
+S52_Symbol::S52_Symbol(): d(QSharedPointer<Data>::create())
 {
 }
 
-S52_Symbol::S52_Symbol(const S52_Symbol & _other): d(new Data())
+S52_Symbol::S52_Symbol(const S52_Symbol & _other): d(QSharedPointer<Data>::create(*_other.d))
 {
-    * d = * _other.d;
 }
 
 S52_Symbol & S52_Symbol::operator = (const S52_Symbol & _other)
 {
-    if (& _other != this)
+    if (&_other != this)
     {
-        d = new Data();
-        * d = * _other.d;
+        d = QSharedPointer<Data>::create(*_other.d);
     }
-    return * this;
+    return *this;
 }
 
 S52_Symbol::~S52_Symbol()
 {
-    delete d;
 }
 
 void S52_Symbol::setSources(const QStringList & _list)
@@ -515,11 +512,12 @@ QStringList S52_Symbol::colorSchemes() const
 
 QStringList S52_Symbol::symbols(const QString & _scheme) const
 {
-    if (!d->symbols.keys().contains(QString(_scheme).toUpper()))
+    const QString _up = _scheme.toUpper();
+    if (!d->symbols.contains(_up))
     {
-        return (QStringList());
+        return QStringList();
     }
-    return (d->symbols[_scheme].keys());
+    return d->symbols[_up].keys();
 }
 
 QMap<QString, QImage> S52_Symbol::images () const

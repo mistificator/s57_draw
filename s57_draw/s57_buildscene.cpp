@@ -7,13 +7,19 @@
 #include <QDir>
 #include <QMultiMap>
 #include <QStringList>
-#include <QRegExp>
 #include <QApplication>
 #include <QDebug>
 #include <QPainter>
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QRegularExpression>
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+#define S57_SKIP_EMPTY_PARTS Qt::SkipEmptyParts
+#else
+#define S57_SKIP_EMPTY_PARTS QString::SkipEmptyParts
+#endif
 
 #define DBG_PRINT
 #ifdef DBG_PRINT
@@ -29,7 +35,7 @@ struct S57_BuildScene::Data
     S52_Symbol s52;
     struct style_struct
     {
-        style_struct(): priority(0), ref_count(new int)
+        style_struct(): ref_count(new int), priority(0)
         {
             pen = new QPen(Qt::NoPen);
             brush = new QBrush(Qt::NoBrush);
@@ -53,27 +59,9 @@ struct S57_BuildScene::Data
             ref_count = _other.ref_count;
             (* ref_count)++;
         }
-        style_struct & operator = (const style_struct & _other)
+        void release()
         {
-            if (& _other == this)
-            {
-                return (* this);
-            }
-            priority = _other.priority;
-            pen = _other.pen;
-            brush = _other.brush;
-            attributes = _other.attributes;
-            name = _other.name;
-            condition = _other.condition;
-            symbol = _other.symbol;
-            category = _other.category;
-            ref_count = _other.ref_count;
-            (* ref_count)++;
-            return (* this);
-        }
-        ~style_struct()
-        {
-            if (* ref_count == 0)
+            if (*ref_count == 0)
             {
                 delete pen;
                 delete brush;
@@ -86,8 +74,31 @@ struct S57_BuildScene::Data
             }
             else
             {
-                (* ref_count)--;
+                (*ref_count)--;
             }
+        }
+        style_struct & operator = (const style_struct & _other)
+        {
+            if (&_other == this)
+            {
+                return (*this);
+            }
+            release();
+            priority = _other.priority;
+            pen = _other.pen;
+            brush = _other.brush;
+            attributes = _other.attributes;
+            name = _other.name;
+            condition = _other.condition;
+            symbol = _other.symbol;
+            category = _other.category;
+            ref_count = _other.ref_count;
+            (*ref_count)++;
+            return (*this);
+        }
+        ~style_struct()
+        {
+            release();
         }
         style_struct deep_copy() const
         {
@@ -174,10 +185,10 @@ struct S57_BuildScene::Data
 #endif
     void apply_draw_style(const QString & _draw_str, style_struct * _s)
     {
-        QStringList _draw = _draw_str.split(";", QString::SkipEmptyParts);
+        QStringList _draw = _draw_str.split(";", S57_SKIP_EMPTY_PARTS);
         for (int _i = 0; _i < _draw.count(); _i++)
         {
-            QStringList _tok = _draw[_i].split(QRegExp("(\\W)"), QString::SkipEmptyParts);
+            QStringList _tok = _draw[_i].split(QRegularExpression("(\\W)"), S57_SKIP_EMPTY_PARTS);
             //            qDebug() << "apply" << _tok;
             if (_tok.isEmpty())
             {
@@ -271,7 +282,7 @@ struct S57_BuildScene::Data
         {
             _p[_i] = _p[_i].replace("\"", "");
         }
-        QStringList _attr = QString(_p[1])./*replace("?", "").*/split("|", QString::SkipEmptyParts);
+        QStringList _attr = QString(_p[1]).split("|", S57_SKIP_EMPTY_PARTS);
         QString _key = QString(_p[0]).toUpper();
         style_struct * _s = 0;
         for (QMultiMap<QString, style_struct>::iterator _i = _style->begin(); _i != _style->end(); _i++)
@@ -581,7 +592,8 @@ struct S57_BuildScene::Data
                         }
                         case wkbMultiPoint:
                         {
-                            for (int _idx = 0; _idx < ((OGRMultiPoint *)_geom)->getNumGeometries(); _idx++)
+                            const int _num_geoms = ((OGRMultiPoint *)_geom)->getNumGeometries();
+                            for (int _idx = 0; _idx < _num_geoms; _idx++)
                             {
                                 if (!_s.symbol->isEmpty())
                                 {
@@ -593,9 +605,12 @@ struct S57_BuildScene::Data
                                     ((QFixedPixmapItem *)_item)->setScreenSize(_pixmap->size());
                                     ((QFixedPixmapItem *)_item)->setPixmap(_pixmap);
                                     _item->setZValue(20 + _s.priority - _z_offset);
-									_item->setToolTip(_tooltip);
+                                    _item->setToolTip(_tooltip);
                                 }
-                                _s = apply_rule(_feat, _layer_name, _idx);
+                                if (_idx + 1 < _num_geoms)
+                                {
+                                    _s = apply_rule(_feat, _layer_name, _idx + 1);
+                                }
                             }
                             break;
                         }
@@ -632,7 +647,8 @@ struct S57_BuildScene::Data
                         }
                         case wkbMultiLineString:
                         {
-                            for (int _idx = 0; _idx < ((OGRMultiLineString *)_geom)->getNumGeometries(); _idx++)
+                            const int _num_geoms = ((OGRMultiLineString *)_geom)->getNumGeometries();
+                            for (int _idx = 0; _idx < _num_geoms; _idx++)
                             {
                                 _l = (OGRLineString *)((OGRMultiLineString *)_geom)->getGeometryRef(_idx);
                                 _l->StartPoint(&_p1);
@@ -661,7 +677,10 @@ struct S57_BuildScene::Data
                                     _item->setZValue(20 + _s.priority - _z_offset);
 									_item->setToolTip(_tooltip);
                                 }
-                                _s = apply_rule(_feat, _layer_name, _idx);
+                                if (_idx + 1 < _num_geoms)
+                                {
+                                    _s = apply_rule(_feat, _layer_name, _idx + 1);
+                                }
                             }
                             break;
                         }
@@ -817,35 +836,54 @@ struct S57_BuildScene::Data
             return info;
         }
         info.name = _ds->GetName();
-        qint64 _z_offset = _ds->GetLayerByName("DSID") ? get_attribute(_ds->GetLayerByName("DSID")->GetNextFeature(), "DSPM_CSCL").toLongLong() : 0;
+        qint64 _z_offset = 0;
+        if (OGRLayer * _dsid = _ds->GetLayerByName("DSID"))
+        {
+            _dsid->ResetReading();
+            if (OGRFeature * _f = _dsid->GetNextFeature())
+            {
+                _z_offset = get_attribute(_f, "DSPM_CSCL").toLongLong();
+                OGRFeature::DestroyFeature(_f);
+            }
+        }
         if (_z_offset == 0)
         {
-            _z_offset = _ds->GetLayerByName("M_CSCL") ? get_attribute(_ds->GetLayerByName("M_CSCL")->GetNextFeature(), "CSCALE").toLongLong() : 0;
+            if (OGRLayer * _mcscl = _ds->GetLayerByName("M_CSCL"))
+            {
+                _mcscl->ResetReading();
+                if (OGRFeature * _f = _mcscl->GetNextFeature())
+                {
+                    _z_offset = get_attribute(_f, "CSCALE").toLongLong();
+                    OGRFeature::DestroyFeature(_f);
+                }
+            }
         }
         info.scale = _z_offset;
         if (OGRLayer * _layer = _ds->GetLayerByName("M_NSYS"))
         {
             _layer->ResetReading();
-            while(OGRFeature * _feat = _layer->GetNextFeature())
+            while (OGRFeature * _feat = _layer->GetNextFeature())
             {
                 if (OGRGeometry * _geom = _feat->GetGeometryRef())
                 {
                     if (wkbFlatten(_geom->getGeometryType()) == wkbPolygon)
                     {
-                        OGRPoint _p1;
-                        QPolygonF _poly;
-                        OGRLinearRing * _r;
-                        _poly.clear();
-                        _r = ((OGRPolygon *)_geom)->getExteriorRing();
-                        for (int _idx = 0; _idx < _r->getNumPoints(); _idx++)
+                        OGRLinearRing * _r = ((OGRPolygon *)_geom)->getExteriorRing();
+                        if (_r)
                         {
-                            _r->getPoint(_idx, & _p1);
-                            _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
+                            OGRPoint _p1;
+                            QPolygonF _poly;
+                            for (int _idx = 0; _idx < _r->getNumPoints(); _idx++)
+                            {
+                                _r->getPoint(_idx, &_p1);
+                                _poly.append(QPointF(_p1.getX(), -_p1.getY()*mercator_sretch));
+                            }
+                            info.boundingRect = _poly.boundingRect();
+                            qDebug() << "M_NSYS" << info.boundingRect;
                         }
-                        info.boundingRect = _poly.boundingRect();
-                        qDebug() << "M_NSYS" << info.boundingRect;
                     }
                 }
+                OGRFeature::DestroyFeature(_feat);
             }
         }
         return info;
@@ -860,7 +898,7 @@ struct S57_BuildScene::Data
         return _parent;
     }
 
-    void updateVisibility(double _scale, bool _exact)
+    void updateVisibility(double _scale, bool /*_exact*/)
     {
         scale = _scale;
         if (!scene)
@@ -1105,30 +1143,34 @@ void S57_BuildScene::resetScale()
 	{
 		return;
 	}
-	foreach (QGraphicsView * view, d->scene->views())
-	{
-		view->resetMatrix();
-		view->resetTransform();
-	}
+    foreach (QGraphicsView * view, d->scene->views())
+    {
+        view->resetTransform();
+    }
 }
 
 void S57_BuildScene::fullView()
 {
-	if (!d->scene)
-	{
-		return;
-	}
-	foreach (QGraphicsView * view, d->scene->views())
-	{
-		view->resetMatrix();
-		view->resetTransform();
-	}
-    d->scene->setSceneRect(d->scene->itemsBoundingRect());
+    if (!d->scene) return;
     foreach (QGraphicsView * view, d->scene->views())
-	{
-		const double _init_scale = qMin<double>(view->viewport()->width() / d->scene->sceneRect().width(), view->viewport()->height() / d->scene->sceneRect().height());
-		view->scale(_init_scale, _init_scale);
-	}
+    {
+        view->resetTransform();
+    }
+    d->scene->setSceneRect(d->scene->itemsBoundingRect());
+    if (d->scene->sceneRect().width() <= 0.0 || d->scene->sceneRect().height() <= 0.0)
+    {
+        return;
+    }
+    foreach (QGraphicsView * view, d->scene->views())
+    {
+        const double _init_scale = qMin<double>(
+            view->viewport()->width() / d->scene->sceneRect().width(),
+            view->viewport()->height() / d->scene->sceneRect().height());
+        if (_init_scale > 0.0)
+        {
+            view->scale(_init_scale, _init_scale);
+        }
+    }
 }
 
 void S57_BuildScene::updateVisibility(double _scale, bool _exact)

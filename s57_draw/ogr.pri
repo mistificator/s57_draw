@@ -1,7 +1,12 @@
-GDAL_PATH = ./../gdal/gdal
+GDAL_PATH = $$PWD/../gdal/gdal
 
-win32:LIBS += $$GDAL_PATH/gdal_i.lib
-unix:LIBS += $$GDAL_PATH/.libs/libgdal.a
+DEFINES += \
+    CPL_DISABLE_DLL \
+    NOMINMAX
+
+LIBS += -L$$OUT_PWD/../s57_bin -lgdal_s57
+
+win32: LIBS += -lws2_32 -lodbc32 -lodbccp32 -luser32 -ladvapi32 -lshell32 -lole32
 
 INCLUDEPATH +=  $$GDAL_PATH/ogr \
                 $$GDAL_PATH/ogr/ogrsf_frmts \

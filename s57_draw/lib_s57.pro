@@ -22,7 +22,7 @@ SOURCES +=\
         s52_conditional.cpp \
         s52_utils.cpp \
         s57_buildscene.cpp \
-    s52_fixeditem.cpp
+        s52_fixeditem.cpp
 
 
 HEADERS  +=\
@@ -48,4 +48,8 @@ DEFINES += "VERSION_MAJOR=$$VERSION_MAJOR"\
 
 VERSION = $${VERSION_MAJOR}.$${VERSION_MINOR}.$${VERSION_BUILD}
 
-unix:QMAKE_CXXFLAGS += -std=c++11
+greaterThan(QT_MAJOR_VERSION, 5) {
+    CONFIG += c++17
+} else {
+    CONFIG += c++11
+}

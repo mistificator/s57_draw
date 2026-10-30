@@ -324,13 +324,13 @@ QString SOUNDG(int quasou, int tecsou, double depth_value)
 
     QString _depth_str;
     int _digit = 0;
+    int _int_depth = static_cast<int>(depth_value);
     do
     {
-        _depth_str.prepend(";SY(" + symbol + QString::number(_digit++) + QString::number((int)depth_value % 10) + ")");
+        _depth_str.prepend(";SY(" + symbol + QString::number(_digit++) + QString::number(_int_depth % 10) + ")");
     }
-    while ((depth_value /= 10) > 1);
+    while ((_int_depth /= 10) > 0);
     rule_str.append(_depth_str);
-
     return rule_str;
 }
 
@@ -1041,7 +1041,7 @@ QString WRECKS(int _watlev, double _valsou, int _quasou, int _catwrk, int _quapo
             }
             else
             {
-                if (_watlev = watlev_unknown)
+                if (_watlev == watlev_unknown)
                 {
                     rule_str.append(";LS(DOTT,2,CSTLN)");
                 }
@@ -1132,9 +1132,9 @@ QVariant get_attribute(OGRFeature * _feat, const QString & _attr_name)
     {
         char ** _values = _feat->GetFieldAsStringList(_idx);
         QList<QVariant> _v;
-        while (_values)
+        while (_values && *_values)
         {
-            _v << QVariant::fromValue(QString(* _values++));
+            _v << QVariant::fromValue(QString(*_values++));
         }
         return (_v);
     }
@@ -1158,7 +1158,7 @@ bool lists_intersects(const QList<T> & _l1, const QList<T> & _l2)
 {
     foreach (const T & _el1, _l1)
     {
-        if (qFind(_l2, _el1) != _l2.end())
+        if (_l2.contains(_el1))
         {
             return true;
         }
@@ -1186,7 +1186,11 @@ QString translate(const QString & _layer_name, const QString & _cs, OGRFeature *
     }
 
     OGRGeometry * _geom = _feat->GetGeometryRef();
-    if ((_collection_idx > 0) && (dynamic_cast<OGRGeometryCollection *>(_geom)))
+    if (!_geom)
+    {
+        return _translated_cs;
+    }
+    if ((_collection_idx >= 0) && (dynamic_cast<OGRGeometryCollection *>(_geom)))
     {
         if (_collection_idx < ((OGRGeometryCollection *)_geom)->getNumGeometries())
         {

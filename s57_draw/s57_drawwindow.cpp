@@ -1,6 +1,9 @@
 #include "s57_drawwindow.h"
 #include "ui_S57_DrawWindow.h"
 
+#include "s52_symbol.h"
+#include "cpl_port.h"
+
 #include <QFileDialog>
 #include <QGraphicsItem>
 #include <QGraphicsSceneEvent>
@@ -11,15 +14,13 @@
 #include <QScrollBar>
 
 #include <cmath>
-#include "cpl_port.h"
-#include "s52_symbol.h"
-
+#include <cstdlib>
 
 // -------------------------------------------------------------------------
 
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::S57_DrawWindow), scene(0), progress(0), count(0), aspect(Aspect11), radar(0)
+    ui(new Ui::S57_DrawWindow), scene(0), radar(0), progress(0), count(0), aspect(Aspect11)
 {
     ui->setupUi(this);
     ui->statusbar->addPermanentWidget(position_label = new QLabel(), 1);
@@ -111,7 +112,7 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
         radar_emu.resize(radar->blockSize() * radar->positionsCount());
         for (int i = 0; i < radar->blockSize() * radar->positionsCount(); i++)
         {
-            radar_emu[i] = (qrand() & 0x7f);
+            radar_emu[i] = (std::rand() & 0x7f);
         }
 
         setRadarFlags();
@@ -264,7 +265,7 @@ void S57_DrawWindow::createTargets()
     {
         targets.removeTargetByName("Test ship " + QString::number(i + 1));
         S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
-        t.angle = 359.0 * qrand() / RAND_MAX;
+        t.angle = 359.0 * std::rand() / RAND_MAX;
         t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
         t.numberVisible = true;
         t.numberValue = i + 1;
@@ -279,7 +280,7 @@ void S57_DrawWindow::createTargets()
             do
             {
                 land_found = false;
-                t.pos = QPointF(depth_rect.x() + depth_rect.width() * qrand() / RAND_MAX, depth_rect.y() + depth_rect.height() * qrand() / RAND_MAX);
+                t.pos = QPointF(depth_rect.x() + depth_rect.width() * std::rand() / RAND_MAX, depth_rect.y() + depth_rect.height() * std::rand() / RAND_MAX);
                 foreach (QGraphicsItem * item, land_items)
                 {
                     if (item->contains(t.pos))
@@ -328,7 +329,7 @@ void S57_DrawWindow::moveTargets()
     {
         S57_TargetModificator::Target & t = * i;
         Decision dec = DKeepMoving;
-        if (qrand() < 0.001 * RAND_MAX)
+        if (std::rand() < 0.001 * RAND_MAX)
         {
             dec = DChangeDir;
         }
@@ -610,7 +611,9 @@ void S57_DrawWindow::colorSchemeChanged()
     {
         return;
     }
-    if (scene && !scene->items().isEmpty() && QMessageBox::question(this, tr("Question"), tr("All maps will be closed. Continue?"), tr("Yes"), tr("No")) != 0)
+    if (scene && !scene->items().isEmpty() &&
+        QMessageBox::question(this, tr("Question"), tr("All maps will be closed. Continue?"),
+                              QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
     {
         return;
     }
@@ -633,24 +636,21 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
 {
     QString _path = qApp->applicationDirPath() + "/render/symbols";
     QDir().mkpath(_path);
-
+    const QString _saved_scheme = builder.s52().colorScheme();
     int _total = 0, _count = 0;
     foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
-        foreach (const QString & _symbol, builder.s52().symbols(builder.s52().colorScheme()))
-        {
-            _total++;
-        }
+        _total += builder.s52().symbols(_scheme).count();
     }
     progress = new QProgressDialog("", QObject::tr("Stop"), 0, _total, this);
     progress->setWindowTitle(QObject::tr("Rendering symbols"));
     progress->setWindowModality(Qt::WindowModal);
-
     foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
+        builder.s52().setColorScheme(_scheme);
         QString _path_scheme = _path + "/" + _scheme;
         QDir().mkpath(_path_scheme);
-        foreach (const QString & _symbol, builder.s52().symbols(builder.s52().colorScheme()))
+        foreach (const QString & _symbol, builder.s52().symbols(_scheme))
         {
             progress->setLabelText(_path_scheme + "/" + _symbol + ".PNG");
             progress->setValue(_count);
@@ -667,11 +667,10 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
             break;
         }
     }
-
+    builder.s52().setColorScheme(_saved_scheme);
     progress->close();
     progress->deleteLater();
     progress = 0;
-
 }
 
 void S57_DrawWindow::on_action_aspect_1_1_triggered()
@@ -738,7 +737,7 @@ void S57_DrawWindow::timerEvent(QTimerEvent * te)
                 }
                 QVector<short> v(block_size);
                 v.fill(0);
-                for (int i = 0; i < v.count(); i += 327.0  * qrand() / RAND_MAX)
+                for (int i = 0; i < v.count(); i += qMax(1, int(327.0 * std::rand() / RAND_MAX)))
                 {
                     v[i] = radar_emu[block_size * pos + i];
                 }

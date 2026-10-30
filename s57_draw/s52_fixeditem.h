@@ -35,6 +35,9 @@ private:
     QImage * image_ptr;
     enum {Pixmap = 0, Pixmap_Ptr, Image, Image_Ptr};
     int src_type;
+    QRectF bound_rect;
+    QRectF calcBoundingRect() const;
+    void updateBoundingRect();
 };
 
 typedef QFixedPixmapItem S52FixedItem;

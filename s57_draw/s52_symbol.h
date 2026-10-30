@@ -11,6 +11,7 @@
 #include <QPixmap>
 #include <QStringList>
 #include <QMap>
+#include <QSharedPointer>
 
 class LIB_S57_EXPORT S52_Symbol
 {
@@ -36,7 +37,7 @@ public:
 
 private:
     struct Data;
-    Data * d;
+    QSharedPointer<Data> d;
 };
 
 #endif // S52_SYMBOL_H

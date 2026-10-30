@@ -1,16 +1,22 @@
 #include "lib_s57.h"
+
 #include <QApplication>
 #include <QDir>
 #include <QDebug>
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+#define S57_SKIP_EMPTY_PARTS Qt::SkipEmptyParts
+#else
+#define S57_SKIP_EMPTY_PARTS QString::SkipEmptyParts
+#endif
+
 int main(int _argc, char ** _argv)
 {
     QApplication _a(_argc, _argv);
-
     if (_argc == 1)
     {
         qDebug() << "lib_s57 frontend";
-        qDebug() << "(c) 2012 m.p.";
+        qDebug() << "(c) 2012, 2026 m.p.";
         qDebug() << "usage: lib_s57_frontend.exe [path] [coordinates top-left bottom-right: x1, y1, x2, y2] [side dimension: def. 2048] [simple-complex]";
         qDebug() << "example: lib_s57_frontend c:\\map (10,10,20,20) 8192 complex";
         return 0;
@@ -28,7 +34,7 @@ int main(int _argc, char ** _argv)
             _dir = _arg;
             continue;
         }
-        QStringList _list = QString(_arg).replace("(", "").replace(")", "").split(",", QString::SkipEmptyParts);
+        QStringList _list = QString(_arg).replace("(", "").replace(")", "").split(",", S57_SKIP_EMPTY_PARTS);
         if (_list.count())
         {
             if (_list.count() >= 4)
@@ -37,8 +43,8 @@ int main(int _argc, char ** _argv)
             }
             continue;
         }
-        bool _ok;
-        int _n = _arg.toInt(& _ok);
+        bool _ok = false;
+        int _n = _arg.toInt(&_ok);
         if (_ok)
         {
             _dim = _n;
@@ -48,11 +54,9 @@ int main(int _argc, char ** _argv)
             _complex = false;
         }
     }
-
     if (QDir(_dir).exists() && (_dim > 0))
     {
         render_map_region(_dir, _rgn, _dim, !_complex).save(QApplication::instance()->applicationDirPath() + "/out.png");
     }
-
     return 0;
 }

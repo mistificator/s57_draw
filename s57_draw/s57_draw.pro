@@ -18,7 +18,7 @@ SOURCES  +=\
 HEADERS  += \
             s57_extendedscene.h \
             s57_drawwindow.h \
-    s57_extendedscenemods.h
+            s57_extendedscenemods.h
 
 FORMS    += \
     S57_DrawWindow.ui
@@ -32,7 +32,13 @@ unix:LIBS +=\
             ../s57_bin/lib_s57_ext.a
 
 unix:QMAKE_LFLAGS += -ldl
-unix:QMAKE_CXXFLAGS += -std=c++11
+
+greaterThan(QT_MAJOR_VERSION, 5) {
+    CONFIG += c++17
+} else {
+    CONFIG += c++11
+}
+
 OTHER_FILES += \
             dic.txt \
             s57_draw.ts \

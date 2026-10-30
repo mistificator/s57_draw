@@ -1,5 +1,6 @@
 #include "s57_extendedscene.h"
 #include "s57_extendedscenemods.h"
+#include "s52_fixeditem.h"
 #include <QWidget>
 #include <QPainter>
 #include <QGraphicsView>
@@ -10,7 +11,8 @@
 #include <QScrollBar>
 #include <QTime>
 #include <QPainter>
-#include "s52_fixeditem.h"
+#include <QElapsedTimer>
+#include <algorithm>
 
 float sin_table_deg[10800], cos_table_deg[10800];
 float sin_table_rad[(int)(6 * M_PI * 1000)], cos_table_rad[(int)(6 * M_PI * 1000)];
@@ -186,7 +188,12 @@ void S57_GridModificator::onDrawForeground(QPainter * _painter, const QRectF & _
         _painter->drawText(_view->mapFromScene(PtY1),sY);
 
         QPointF PtY2_adj = _view->mapFromScene(PtY2);
-        PtY2_adj.setX(PtY2_adj.x() - QFontMetrics(_painter->font()).width(sY) / 2);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
+        const int _text_w = QFontMetrics(_painter->font()).horizontalAdvance(sY);
+#else
+        const int _text_w = QFontMetrics(_painter->font()).width(sY);
+#endif
+        PtY2_adj.setX(PtY2_adj.x() - _text_w / 2);
         _painter->drawText(PtY2_adj,sY);
 
         dx_origin +=_grid_x_step;
@@ -406,7 +413,7 @@ public:
             }
         }
         QPoint center = sec_img.rect().center();
-        QMatrix matrix;
+        QTransform matrix;
         matrix.translate(center.x(), center.y());
         matrix.rotate(-90);
         return sec_img.transformed(matrix);
@@ -706,7 +713,11 @@ void S57_RadarModificator::addData(short * block, int position, const unsigned c
     foreach (QLineF line, ri_sec_lines)
     {
         QPointF pt;
-        if (line.intersect(ray, & pt) == QLineF::BoundedIntersection)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        if (line.intersects(ray, &pt) == QLineF::BoundedIntersection)
+#else
+        if (line.intersect(ray, &pt) == QLineF::BoundedIntersection)
+#endif
         {
             float q, r;
             polarLinePointPrepare(line, q, r);
@@ -778,7 +789,7 @@ void S57_RadarModificator::viewportMoved()
 
     QStringList log;
     log << QString(__FUNCTION__) + " start";
-    QTime t;
+    QElapsedTimer t;
     t.start();
 
     foreach (QGraphicsLineItem * ri_coast_item, ri_unsorted_coasts)
@@ -912,7 +923,7 @@ void S57_RadarModificator::viewportMoved()
 //    const int t_step = 1; // raycasting granularity (1 - max resolution)
     const int t_step = qMax(1, 1 << (int)(0.5 * ::log10f(builder()->scaleTo1())));
     int t_next = 0;
-    qSort(angles);
+    std::sort(angles.begin(), angles.end());
 //    for (int t = 0; t < pos_count; t+=t_step)
     foreach (int t, angles)
     {
@@ -930,7 +941,11 @@ void S57_RadarModificator::viewportMoved()
             foreach (QGraphicsLineItem * ri_coast_item, list)
             {
                 QPointF pt;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                if (line.intersects(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
+#else
                 if (line.intersect(ri_coast_item->line(), & pt) == QLineF::BoundedIntersection)
+#endif
                 {
                     const QLineF & coast_line = ri_coast_item->line();
                     QGraphicsLineItem * ri_visible_coast_item = new QGraphicsLineItem(coast_line);
@@ -1353,16 +1368,17 @@ void S57_TargetModificator::removeTarget(const Target * target)
                 {
                     i->pixmap->scene()->removeItem(i->pixmap);
                 }
-//                delete i->pixmap; // memory leak here, crash if uncomment // https://bugreports.qt.io/browse/QTBUG-50691
-                i->pixmap = 0;
+                delete i->pixmap;
+                i->pixmap = nullptr;
             }
             if (i->number)
             {
                 if (i->number->scene())
                 {
-                    scene()->removeItem(i->number);
+                    i->number->scene()->removeItem(i->number);
                 }
-                i->number = 0;
+                delete i->number;
+                i->number = nullptr;
             }
             _targets.erase(i);
             return;
@@ -1530,9 +1546,9 @@ void S57_TargetModificator::renderTargets()
     {
         return;
     }
-    foreach (Target target, _targets)
+    for (QList<Target>::const_iterator i = _targets.constBegin(); i != _targets.constEnd(); ++i)
     {
-        renderTarget(& target);
+        renderTarget(&(*i));
     }
 }
 

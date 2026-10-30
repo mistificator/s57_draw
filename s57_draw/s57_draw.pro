@@ -23,13 +23,7 @@ HEADERS  += \
 FORMS    += \
     S57_DrawWindow.ui
 
-win32:LIBS +=\
-            ../s57_bin/lib_s57.lib \
-            ../s57_bin/lib_s57_ext.lib
-
-unix:LIBS +=\
-            ../s57_bin/lib_s57.a \
-            ../s57_bin/lib_s57_ext.a
+LIBS += -L$$OUT_PWD/../s57_bin -llib_s57 -llib_s57_ext
 
 unix:QMAKE_LFLAGS += -ldl
 

@@ -17,11 +17,7 @@ SOURCES +=\
 HEADERS  +=\
             lib_s57.h
 
-win32:LIBS +=\
-            ../s57_bin/lib_s57.lib
-
-unix:LIBS +=\
-            ../s57_bin/lib_s57.a
+LIBS += -L$$OUT_PWD/../s57_bin -llib_s57
 
 unix:QMAKE_LFLAGS += -ldl
 

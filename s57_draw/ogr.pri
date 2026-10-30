@@ -7,6 +7,7 @@ DEFINES += \
 LIBS += -L$$OUT_PWD/../s57_bin -lgdal_s57
 
 win32: LIBS += -lws2_32 -lodbc32 -lodbccp32 -luser32 -ladvapi32 -lshell32 -lole32
+unix:  LIBS += -lpthread -ldl -lm
 
 INCLUDEPATH +=  $$GDAL_PATH/ogr \
                 $$GDAL_PATH/ogr/ogrsf_frmts \

@@ -701,6 +701,10 @@ void S57_RadarModificator::addData(QVector<short> & block, int position, const u
 
 void S57_RadarModificator::addData(short * block, int position, const unsigned char coast_color)
 {
+    if (!isActive())
+    {
+        return;
+    }
     if ((radar_flags & RadarRay) == RadarRay)
     {
         const float radius = radarRadius();

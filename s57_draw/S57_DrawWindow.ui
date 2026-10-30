@@ -127,7 +127,7 @@
    </widget>
    <widget class="QMenu" name="menuRadar">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
      <string>Radar</string>

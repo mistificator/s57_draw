@@ -951,10 +951,6 @@ struct S57_BuildScene::Data
                             _poly.clear();
                             OGRPolygon * _ogr_poly = (OGRPolygon *)_geom;
                             _r = _ogr_poly->getExteriorRing();
-                            if (!_r || _r->getNumPoints() < 3)
-                            {
-                                break;
-                            }
                             _sum_x = 0; _sum_y = 0; _sum_count = 0;
                             for (int _idx = 0; _idx < _r->getNumPoints(); _idx++)
                             {

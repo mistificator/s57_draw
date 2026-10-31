@@ -71,7 +71,7 @@ private:
     int radar_timer_id, target_timer_id;
     int target_timer_period;
     QVector<short> radar_emu;
-    QProgressDialog * progress;
+    QSharedPointer<QProgressDialog> progress;
     bool cancel;
     qint64 count;
     enum {Aspect11 = 1, Aspect12 = 2};

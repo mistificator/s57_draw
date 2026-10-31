@@ -20,7 +20,7 @@
 
 S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::S57_DrawWindow), scene(0), radar(0), progress(0), count(0), aspect(Aspect11)
+    ui(new Ui::S57_DrawWindow), scene(nullptr), radar(nullptr), progress(nullptr), count(0), aspect(Aspect11)
 {
     ui->setupUi(this);
     ui->statusbar->addPermanentWidget(position_label = new QLabel(), 1);
@@ -178,7 +178,7 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
         nextDir(file_or_dir, true);
         break;
     }
-    progress = new QProgressDialog(file_or_dir, QObject::tr("Stop"), 0, count, this);
+    progress = QSharedPointer<QProgressDialog>::create(file_or_dir, QObject::tr("Stop"), 0, count, this);
     progress->setWindowTitle(QObject::tr("Scanning folder"));
     progress->setWindowModality(Qt::WindowModal);
     progress->show();
@@ -231,7 +231,7 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 
     progress->close();
     progress->deleteLater();
-    progress = 0; count = 0;
+    progress.clear(); count = 0;
 
     land_items = builder.items("LNDARE");
     depth_items = builder.items("DEPARE");
@@ -246,14 +246,20 @@ void S57_DrawWindow::createTargets()
     {
         return;
     }
-    //    qDebug() << __FUNCTION__ << "enter";
+    const int _targetsCount = 15;
+    QProgressDialog * _progress = new QProgressDialog("", QObject::tr("Stop"), 0, _targetsCount, this);
+    _progress->setWindowTitle(" ");
+    _progress->setWindowModality(Qt::WindowModal);
+    _progress->show();
+
     targets_land_cache.clear();
     targets_depth_cache.clear();
     const QRectF depth_rect = scene->itemsBoundingRect();
-    for (int i = 0; i < 15; i++)
+    for (int i = 0; i < _targetsCount; i++)
     {
-        targets.removeTargetByName("Test ship " + QString::number(i + 1));
-        S57_TargetModificator::Target & t = targets.addTarget(QPointF(), "Test ship " + QString::number(i + 1));
+        const QString _targetName = "Test ship " + QString::number(i + 1);
+        targets.removeTargetByName(_targetName);
+        S57_TargetModificator::Target & t = targets.addTarget(QPointF(), _targetName);
         t.angle = 359.0 * std::rand() / RAND_MAX;
         t.color = QColor((Qt::GlobalColor)(i / 3 + Qt::red));
         t.numberVisible = true;
@@ -294,9 +300,15 @@ void S57_DrawWindow::createTargets()
             }
         }
         while (!depth_found);
+
+        _progress->setWindowTitle(_targetName);
+        _progress->setValue(i);
+        qApp->processEvents();
     }
     targets.renderTargets();
-//    qDebug() << __FUNCTION__ << "exit";
+
+    _progress->close();
+    _progress->deleteLater();
 }
 
 double S57_DrawWindow::knotToScene(double knots, int msecs)
@@ -636,9 +648,9 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
     {
         _total += builder.s52().symbols(_scheme).count();
     }
-    progress = new QProgressDialog("", QObject::tr("Stop"), 0, _total, this);
-    progress->setWindowTitle(QObject::tr("Rendering symbols"));
-    progress->setWindowModality(Qt::WindowModal);
+    QProgressDialog * _progress = new QProgressDialog("", QObject::tr("Stop"), 0, _total, this);
+    _progress->setWindowTitle(QObject::tr("Rendering symbols"));
+    _progress->setWindowModality(Qt::WindowModal);
     foreach (const QString & _scheme, builder.s52().colorSchemes())
     {
         builder.s52().setColorScheme(_scheme);
@@ -646,25 +658,24 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
         QDir().mkpath(_path_scheme);
         foreach (const QString & _symbol, builder.s52().symbols(_scheme))
         {
-            progress->setLabelText(_path_scheme + "/" + _symbol + ".PNG");
-            progress->setValue(_count);
+            _progress->setLabelText(_path_scheme + "/" + _symbol + ".PNG");
+            _progress->setValue(_count);
             builder.s52().image(_symbol).save(_path_scheme + "/" + _symbol + ".PNG");
             _count++;
             qApp->processEvents();
-            if (progress->wasCanceled())
+            if (_progress->wasCanceled())
             {
                 break;
             }
         }
-        if (progress->wasCanceled())
+        if (_progress->wasCanceled())
         {
             break;
         }
     }
     builder.s52().setColorScheme(_saved_scheme);
-    progress->close();
-    progress->deleteLater();
-    progress = 0;
+    _progress->close();
+    _progress->deleteLater();
 }
 
 double S57_DrawWindow::precisionAspect()
@@ -787,10 +798,6 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         scene->addMod(& grid);
         if (ui->actionTargets->isChecked())
         {
-            if (targets.targets().isEmpty())
-            {
-                createTargets();
-            }
             scene->addMod(& targets);
         }
         if (radar)
@@ -866,6 +873,10 @@ void S57_DrawWindow::on_actionRadarHideMap_triggered(bool checked)
 
 void S57_DrawWindow::on_actionTargets_triggered(bool checked)
 {
+    if (checked && targets.targets().isEmpty())
+    {
+        createTargets();
+    }
     if (!ui->actionRadar->isChecked() || !ui->actionRadarHideMap->isChecked())
     {
         if (checked)

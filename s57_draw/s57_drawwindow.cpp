@@ -55,21 +55,6 @@ S57_DrawWindow::S57_DrawWindow(QWidget *parent) :
     ui->actionTooltips->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("tooltips", false).toBool());
     ui->actionMap_bound->setChecked(QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("map_bounds", false).toBool());
 
-    _ag = new QActionGroup(this);
-    ui->action_aspect_1_1->setActionGroup(_ag);
-    ui->action_aspect_1_2->setActionGroup(_ag);
-    aspect = QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).value("aspect", Aspect12).toInt();
-    if (aspect == Aspect11)
-    {
-        ui->action_aspect_1_1->setChecked(true);
-        on_action_aspect_1_1_triggered();
-    }
-    if (aspect == Aspect12)
-    {
-        ui->action_aspect_1_2->setChecked(true);
-        on_action_aspect_1_2_triggered();
-    }
-
     QFile f(":global/scrollbar.css");
     if (f.exists() && f.open(QIODevice::ReadOnly))
     {
@@ -232,6 +217,10 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
     const bool re = builder.isRenderEnabled();
     builder.setRenderEnabled(true);
     builder.render();
+    if (scene->sceneRect().height() > 0.0)
+    {
+        scene->setAspect(scene->precisionAspectHint());
+    }
     scene->fullView();
     builder.setRenderEnabled(re);
 
@@ -253,14 +242,14 @@ void S57_DrawWindow::openMaps(OpenMode mode, QString file_or_dir)
 
 void S57_DrawWindow::createTargets()
 {
-    if (depth_items.isEmpty())
+    if (depth_items.isEmpty() || !ui->actionTargets->isChecked())
     {
         return;
     }
-//    qDebug() << __FUNCTION__ << "enter";
+    //    qDebug() << __FUNCTION__ << "enter";
     targets_land_cache.clear();
     targets_depth_cache.clear();
-    const QRectF depth_rect = scene->sceneRect();
+    const QRectF depth_rect = scene->itemsBoundingRect();
     for (int i = 0; i < 15; i++)
     {
         targets.removeTargetByName("Test ship " + QString::number(i + 1));
@@ -281,16 +270,20 @@ void S57_DrawWindow::createTargets()
             {
                 land_found = false;
                 t.pos = QPointF(depth_rect.x() + depth_rect.width() * std::rand() / RAND_MAX, depth_rect.y() + depth_rect.height() * std::rand() / RAND_MAX);
+                if (scene->items(t.pos).isEmpty())
+                {
+                    continue;
+                }
                 foreach (QGraphicsItem * item, land_items)
                 {
-                    if (item->contains(t.pos))
+                    if (!item->contains(t.pos))
                     {
                         land_found = true;
                         break;
                     }
                 }
             }
-            while (land_found);
+            while (!land_found);
             foreach (QGraphicsItem * item, depth_items)
             {
                 if (item->contains(t.pos))
@@ -475,7 +468,8 @@ void S57_DrawWindow::scaleChanged()
     const double _scale = builder.scaleTo1();
     scale_label->setText("1:" + QString::number(_scale, '.', 0));
     const QRectF r = ui->S57View->mapToScene(ui->S57View->viewport()->rect()).boundingRect();
-    const double miles = qMin<double>(r.width() * 60, r.height() * 60);
+    const double cos_lat = std::cos(r.center().y() * M_PI / 180.0);
+    const double miles = qMin<double>(r.width() * 60.0 * qAbs(cos_lat), r.height() * 60.0);
     distance_label->setText(QString::number(miles, 'f', 1) + " " + QObject::tr("miles"));
 
     int block_size = 8192;
@@ -673,26 +667,6 @@ void S57_DrawWindow::on_actionExport_symbols_triggered()
     progress = 0;
 }
 
-void S57_DrawWindow::on_action_aspect_1_1_triggered()
-{
-    if (aspect == Aspect12)
-    {
-        aspect = Aspect11;
-        scene->setAspect(aspect);
-        QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);
-    }
-}
-
-void S57_DrawWindow::on_action_aspect_1_2_triggered()
-{
-    if (aspect == Aspect11)
-    {
-        aspect = Aspect12;
-        scene->setAspect(aspect);
-        QSettings(qApp->applicationDirPath() + "/s57_draw.ini", QSettings::IniFormat).setValue("aspect", aspect);
-    }
-}
-
 double S57_DrawWindow::precisionAspect()
 {
     QPointF worldcenter = scene->sceneRect().center();
@@ -813,6 +787,10 @@ void S57_DrawWindow::on_actionRadar_triggered(bool checked)
         scene->addMod(& grid);
         if (ui->actionTargets->isChecked())
         {
+            if (targets.targets().isEmpty())
+            {
+                createTargets();
+            }
             scene->addMod(& targets);
         }
         if (radar)

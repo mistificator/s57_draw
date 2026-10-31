@@ -170,10 +170,36 @@ enum {
     catlit_max
 };
 
-QString LIGHTS(double /*valnmr*/, int catlit, int /*litvis*/, int color, double sectr1, double sectr2)
+enum
 {
-    QString rule_str;
-    rule_str = "SY(LITDEF11)";
+    litchr_unknown = 0,
+    litchr_fixed = 1,
+    litchr_flashing = 2,
+    litchr_long_flashing = 3,
+    litchr_quick_flashing = 4,
+    litchr_very_quick_flashing = 5,
+    litchr_ultra_quick_flashing = 6,
+    litchr_isophase = 7,
+    litchr_occulting = 8,
+    litchr_interrupted_quick_flashing = 9,
+    litchr_interrupted_very_quick_flashing = 10,
+    litchr_interrupted_ultra_quick_flashing = 11,
+    litchr_morse = 12,
+    litchr_fixed_flash = 13,
+    litchr_flash_long_flash = 14,
+    litchr_occulting_flash = 15,
+    litchr_fixed_long_flash = 16,
+    litchr_occulting_alternating = 17,
+    litchr_long_flash_alternating = 18,
+    litchr_flash_alternating = 19,
+    litchr_group_alternating = 20,
+    litchr_alternating = 28
+};
+
+QString LIGHTS(double valnmr, int catlit, int /*litvis*/, int color, double sectr1, double sectr2,
+               int litchr = 0, const QString & siggrp = QString(), double sigper = 0.0, double height = 0.0)
+{
+    QString rule_str = "SY(LITDEF11)";
     if (catlit > catlit_unknown)
     {
         switch (catlit)
@@ -244,7 +270,58 @@ QString LIGHTS(double /*valnmr*/, int catlit, int /*litvis*/, int color, double 
     }
 
 lights_end:
-
+#if 0 // do we need this?
+    if ((sectr1 == 0.0) && (sectr2 == 0.0) && (valnmr >= 15.0 || height >= 15.0))
+    {
+        QString desc;
+        switch (litchr)
+        {
+        case litchr_fixed: desc += "F"; break;
+        case litchr_flashing: desc += "Fl"; break;
+        case litchr_long_flashing: desc += "LFl"; break;
+        case litchr_quick_flashing: desc += "Q"; break;
+        case litchr_very_quick_flashing: desc += "VQ"; break;
+        case litchr_ultra_quick_flashing: desc += "UQ"; break;
+        case litchr_isophase: desc += "Iso"; break;
+        case litchr_occulting: desc += "Oc"; break;
+        case litchr_morse: desc += "Mo"; break;
+        case litchr_fixed_flash: desc += "FFl"; break;
+        case litchr_alternating: desc += "Al"; break;
+        }
+        if (!siggrp.isEmpty() && siggrp != "(1)" && siggrp != "()")
+        {
+            desc += siggrp;
+        }
+        switch (color)
+        {
+        case color_white: desc += " W"; break;
+        case color_red: desc += " R"; break;
+        case color_green: desc += " G"; break;
+        case color_yellow:
+        case color_amber:
+        case color_orange: desc += " Y"; break;
+        case color_blue: desc += " Bu"; break;
+        case color_violet: desc += " Vi"; break;
+        }
+        if (sigper > 0.0)
+        {
+            desc += " " + QString::number(sigper, 'f', 0) + "s";
+        }
+        if (height > 0.0)
+        {
+            desc += " " + QString::number(height, 'f', 0) + "m";
+        }
+        if (valnmr > 0.0)
+        {
+            desc += " " + QString::number(valnmr, 'f', 0) + "Nm";
+        }
+        desc = desc.trimmed();
+        if (!desc.isEmpty())
+        {
+            rule_str.append(";TX('" + desc + "',3,2,3,'15110',2,0,CHBLK,23)");
+        }
+    }
+#endif
     return rule_str;
 }
 
@@ -1204,97 +1281,102 @@ QString translate(const QString & _layer_name, const QString & _cs, OGRFeature *
         _translated_cs = DATCVR();
     }
     else
-        if (CHECK_CS("DEPARE"))
+    if (CHECK_CS("DEPARE"))
+    {
+        _translated_cs = DEPARE(
+                    DBL_ATTR("DRVAL1"),
+                    DBL_ATTR("DRVAL2"),
+                    CHECK_LY("DRGARE"));
+    }
+    else
+    if (CHECK_CS("DEPCNT"))
+    {
+        _translated_cs = DEPCNT(
+                    DBL_ATTR("DRVAL1"),
+                    DBL_ATTR("DRVAL2"),
+                    DBL_ATTR("VALDCO"),
+                    INT_ATTR("QUAPOS"));
+    }
+    else
+    if (CHECK_CS("LIGHTS"))
+    {
+        const QList<int> _cols = split_str_attr_as_int<int>(STR_ATTR("COLOUR"));
+        _translated_cs = LIGHTS(
+            DBL_ATTR("VALNMR"),
+            INT_ATTR("CATLIT"),
+            INT_ATTR("LITVIS"),
+            _cols.isEmpty() ? INT_ATTR("COLOUR") : _cols.first(),
+            DBL_ATTR("SECTR1"),
+            DBL_ATTR("SECTR2"),
+            INT_ATTR("LITCHR"),
+            QString::fromLatin1(STR_ATTR("SIGGRP")),
+            DBL_ATTR("SIGPER"),
+            DBL_ATTR("HEIGHT"));
+    }
+    else
+    if (CHECK_CS("SOUNDG"))
+    {
+        switch (_wkb)
         {
-            _translated_cs = DEPARE(
-                        DBL_ATTR("DRVAL1"),
-                        DBL_ATTR("DRVAL2"),
-                        CHECK_LY("DRGARE"));
+        case wkbPoint:
+        case wkbMultiPoint:
+            _translated_cs = SOUNDG(
+                        INT_ATTR("QUASOU"),
+                        INT_ATTR("TECSOU"),
+                        ((OGRPoint *)_geom)->getZ());
+            break;
         }
-        else
-            if (CHECK_CS("DEPCNT"))
-            {
-                _translated_cs = DEPCNT(
-                            DBL_ATTR("DRVAL1"),
-                            DBL_ATTR("DRVAL2"),
-                            DBL_ATTR("VALDCO"),
-                            INT_ATTR("QUAPOS"));
-            }
-            else
-                if (CHECK_CS("LIGHTS"))
-                {
-                    _translated_cs = LIGHTS(
-                                DBL_ATTR("VALNMR"),
-                                INT_ATTR("CATLIT"),
-                                INT_ATTR("LITVIS"),
-                                INT_ATTR("COLOUR"),
-                                DBL_ATTR("SECTR1"),
-                                DBL_ATTR("SECTR2"));
-                }
-                else
-                    if (CHECK_CS("SOUNDG"))
-                    {
-                        switch (_wkb)
-                        {
-                        case wkbPoint:
-                        case wkbMultiPoint:
-                            _translated_cs = SOUNDG(
-                                        INT_ATTR("QUASOU"),
-                                        INT_ATTR("TECSOU"),
-                                        ((OGRPoint *)_geom)->getZ());
-                            break;
-                        }
-                    }
-                    else
-                        if (CHECK_CS("QUAPOS"))
-                        {
-                            _translated_cs = QUAPOS(
-                                        INT_ATTR("QUAPOS"),
-                                        INT_ATTR("QUALTY"),
-                                        INT_ATTR("CONRAD"),
-                                        _wkb,
-                                        CHECK_LY("COALNE"));
-                        }
-                        else
-                            if (CHECK_CS("SLCONS"))
-                            {
-                                _translated_cs = SLCONS(
-                                            INT_ATTR("QUAPOS"),
-                                            INT_ATTR("CONDTN"),
-                                            INT_ATTR("WATLEV"),
-                                            INT_ATTR("CATSLC")
-                                            );
-                            }
-                            else
-                                if (CHECK_CS("RESARE"))
-                                {
-                                    _translated_cs = RESARE(
-                                                split_str_attr_as_int<int>(STR_ATTR("RESTRN")),
-                                                split_str_attr_as_int<int>(STR_ATTR("CATREA")));
-                                }
-                                else
-                                    if (CHECK_CS("RESTRN"))
-                                    {
-                                        _translated_cs = RESTRN(
-                                                    split_str_attr_as_int<int>(STR_ATTR("RESTRN")));
-                                    }
-                                    else
-                                        if (CHECK_CS("TOPMAR"))
-                                        {
-                                            _translated_cs = TOPMAR(
-                                                        INT_ATTR("TOPSHP"));
-                                        }
-                                        else
-                                            if (CHECK_CS("WRECKS"))
-                                            {
-                                                _translated_cs = WRECKS(
-                                                            INT_ATTR("WATLEV"),
-                                                            DBL_ATTR("VALSOU"),
-                                                            INT_ATTR("QUASOU"),
-                                                            INT_ATTR("CATWRK"),
-                                                            INT_ATTR("QUAPOS"),
-                                                            _wkb);
-                                            }
+    }
+    else
+    if (CHECK_CS("QUAPOS"))
+    {
+        _translated_cs = QUAPOS(
+                    INT_ATTR("QUAPOS"),
+                    INT_ATTR("QUALTY"),
+                    INT_ATTR("CONRAD"),
+                    _wkb,
+                    CHECK_LY("COALNE"));
+    }
+    else
+    if (CHECK_CS("SLCONS"))
+    {
+        _translated_cs = SLCONS(
+                    INT_ATTR("QUAPOS"),
+                    INT_ATTR("CONDTN"),
+                    INT_ATTR("WATLEV"),
+                    INT_ATTR("CATSLC")
+                    );
+    }
+    else
+    if (CHECK_CS("RESARE"))
+    {
+        _translated_cs = RESARE(
+                    split_str_attr_as_int<int>(STR_ATTR("RESTRN")),
+                    split_str_attr_as_int<int>(STR_ATTR("CATREA")));
+    }
+    else
+    if (CHECK_CS("RESTRN"))
+    {
+        _translated_cs = RESTRN(
+                    split_str_attr_as_int<int>(STR_ATTR("RESTRN")));
+    }
+    else
+    if (CHECK_CS("TOPMAR"))
+    {
+        _translated_cs = TOPMAR(
+                    INT_ATTR("TOPSHP"));
+    }
+    else
+    if (CHECK_CS("WRECKS"))
+    {
+        _translated_cs = WRECKS(
+                    INT_ATTR("WATLEV"),
+                    DBL_ATTR("VALSOU"),
+                    INT_ATTR("QUASOU"),
+                    INT_ATTR("CATWRK"),
+                    INT_ATTR("QUAPOS"),
+                    _wkb);
+    }
     return _translated_cs;
 }
 }

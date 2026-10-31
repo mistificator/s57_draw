@@ -5,8 +5,6 @@
 #endif
 #include "s57_drawwindow.h"
 
-#define RUSSIAN
-
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);

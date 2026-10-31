@@ -6,6 +6,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QKeyEvent>
 #include <QGraphicsItem>
+#include <QScrollBar>
 #include <QDebug>
 #include <cmath>
 #include "cpl_port.h"
@@ -80,8 +81,8 @@ void S57_ExtendedGraphicsScene::addMod(S57_ExtendedGraphicsSceneModificator * _m
             _mod->setActive(true);
             _mod->onAddMod();
         }
-        d->mods << _mod;        
-    }    
+        d->mods << _mod;
+    }
     invalidate();
     update();
 }
@@ -130,62 +131,79 @@ bool S57_ExtendedGraphicsScene::eventFilter(QObject *, QEvent * _ev)
 {
     switch (_ev->type())
     {
-        case QEvent::KeyPress:
+    case QEvent::KeyPress:
+    {
+        QKeyEvent * _ke = (QKeyEvent *)_ev;
+        if (view() && (d->flags & SceneKeyZoom) == SceneKeyZoom)
         {
-            QKeyEvent * _ke = (QKeyEvent *)_ev;
-            if (view() && (d->flags & SceneKeyZoom) == SceneKeyZoom)
+            view()->setUpdatesEnabled(false);
+            if (_ke->key() == Qt::Key_Plus)
             {
-                view()->setUpdatesEnabled(false);
-                if (_ke->key() == Qt::Key_Plus)
-                {
-                    d->viewScale(1.25, 1.25);
-                    //        qDebug() << currentScale();
-                    updateVisibility();
-                }
-                if (_ke->key() == Qt::Key_Minus)
-                {
-                    d->viewScale(0.8, 0.8);
-                    //        qDebug() << currentScale();
-                    updateVisibility();
-                }
-                view()->setUpdatesEnabled(true);
+                d->viewScale(1.25, 1.25);
+                //        qDebug() << currentScale();
+                updateVisibility();
             }
+            if (_ke->key() == Qt::Key_Minus)
+            {
+                d->viewScale(0.8, 0.8);
+                //        qDebug() << currentScale();
+                updateVisibility();
+            }
+            view()->setUpdatesEnabled(true);
         }
-        break;
-        case QEvent::GraphicsSceneWheel:
+    }
+    break;
+    case QEvent::GraphicsSceneWheel:
+    {
+        QGraphicsSceneWheelEvent * _we = (QGraphicsSceneWheelEvent *)_ev;
+        QGraphicsView * _v = view();
+        if (_v && (d->flags & SceneWheelZoom) == SceneWheelZoom)
         {
-            QGraphicsSceneWheelEvent * _we = (QGraphicsSceneWheelEvent *)_ev;
-            if (view() && (d->flags & SceneWheelZoom) == SceneWheelZoom)
+            double _k = 0.0;
+            const int _d = _we->delta();
+            if (_d < 0)
             {
-                view()->setUpdatesEnabled(false);
-                double _k = 0;
-                const int _d = _we->delta();
-                if (_d < 0)
-                {
-                    _k = 0.8;
-                }
-                if (_d > 0)
-                {
-                    _k = 1.25;
-                }
-                if (_d != 0)
-                {
-                    d->viewScale(_k, _k);
-                    //                qDebug() << currentScale();
-                    updateVisibility();
-                }
-                view()->setUpdatesEnabled(true);
+                _k = 0.8;
             }
-        }
-        break;
-        case QEvent::GraphicsSceneHelp:
-        {
-            if ((d->flags & SceneToolTips) == SceneToolTips)
+            else if (_d > 0)
             {
-                break;
+                _k = 1.25;
             }
+            if (_k != 0.0)
+            {
+                _v->setUpdatesEnabled(false);
+
+                const QPoint _view_pos = _v->viewport()->mapFromGlobal(_we->screenPos());
+                const QPointF _target_scene_pos = _v->mapToScene(_view_pos);
+
+                const QGraphicsView::ViewportAnchor _old_anchor = _v->transformationAnchor();
+                _v->setTransformationAnchor(QGraphicsView::NoAnchor);
+
+                d->viewScale(_k, _k);
+                updateVisibility();
+
+                const QPoint _new_view_pos = _v->mapFromScene(_target_scene_pos);
+                const QPoint _delta = _new_view_pos - _view_pos;
+                _v->horizontalScrollBar()->setValue(_v->horizontalScrollBar()->value() + _delta.x());
+                _v->verticalScrollBar()->setValue(_v->verticalScrollBar()->value() + _delta.y());
+
+                _v->setTransformationAnchor(_old_anchor);
+                _v->setUpdatesEnabled(true);
+            }
+            _we->accept();
             return true;
         }
+    }
+    break;
+        break;
+    case QEvent::GraphicsSceneHelp:
+    {
+        if ((d->flags & SceneToolTips) == SceneToolTips)
+        {
+            break;
+        }
+        return true;
+    }
     }
 
     foreach (S57_ExtendedGraphicsSceneModificator * _mod, d->mods)
@@ -266,18 +284,32 @@ void S57_ExtendedGraphicsScene::scale(double _scale)
 
 void S57_ExtendedGraphicsScene::scaleTo1(double _scale)
 {
-     scale(d->builder->scaleTo1(_scale));
+    scale(d->builder->scaleTo1(_scale));
 }
 
 void S57_ExtendedGraphicsScene::fullView()
 {
-    if (view() == 0)
+    if (view() == 0 || d->builder == 0)
     {
         return;
     }
     view()->setUpdatesEnabled(false);
-    d->builder->fullView();
-    d->viewScale(1, d->aspect);
+    view()->resetTransform();
+    const QRectF _items_rect = itemsBoundingRect();
+    setSceneRect(_items_rect.adjusted(-_items_rect.width(), -_items_rect.height(),
+                                      _items_rect.width(), _items_rect.height()));
+    if (_items_rect.width() > 0.0 && _items_rect.height() > 0.0)
+    {
+        d->aspect = precisionAspectHint();
+        const double _init_scale = qMin<double>(
+            view()->viewport()->width() / _items_rect.width(),
+            view()->viewport()->height() / (_items_rect.height() * d->aspect));
+        if (_init_scale > 0.0)
+        {
+            d->viewScale(_init_scale, _init_scale * d->aspect);
+            view()->centerOn(_items_rect.center());
+        }
+    }
     updateVisibility();
     view()->setUpdatesEnabled(true);
 }
@@ -304,5 +336,6 @@ double S57_ExtendedGraphicsScene::aspect() const
 double S57_ExtendedGraphicsScene::precisionAspectHint() const
 {
     const QPointF worldcenter = sceneRect().center();
-    return qAbs<double>(1.0 / ::cos(worldcenter.y() / 180.0 * M_PI));
+    const double cos_lat = ::cos(worldcenter.y() / 180.0 * M_PI);
+    return (qAbs(cos_lat) > 1e-4) ? qAbs(1.0 / cos_lat) : 1.0;
 }

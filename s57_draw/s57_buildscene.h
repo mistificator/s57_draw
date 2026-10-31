@@ -48,9 +48,15 @@ public:
     void setScaleTo(S57_BuildScene * _other);
     S52_Symbol & s52() const;
 
-    double scaleTo1(double _scale = 1.0, double _dot_mm = 0.25, double _km_in_deg = 78.715);
+    double scaleTo1(double _scale = 1.0, double _dot_mm = 0.0, double _km_in_deg = 111.12);
 
-    enum ItemKeys {ItemLayerNameKey = 1, ItemMapNameKey = 2};
+    enum ItemKeys {
+        ItemLayerNameKey = 1,
+        ItemMapNameKey   = 2,
+        ItemIsTextKey    = 3,
+        ItemTextRectKey  = 4,
+        ItemScaminKey    = 5
+    };
 
     template <class T>
     QList<T *> items(QString _layer_name) const

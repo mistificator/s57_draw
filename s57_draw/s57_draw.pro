@@ -5,6 +5,10 @@ TARGET =    s57_draw
 TEMPLATE =  app
 DESTDIR = ../s57_bin
 
+CONFIG(RUSSIAN) {
+DEFINES += RUSSIAN
+}
+
 # hack for conflicting compiler versions: here must be version of Qt compiler
 #win32:DEFINES += _MSC_VER=1600
 

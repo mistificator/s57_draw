@@ -45,8 +45,6 @@ private slots:
     void on_actionExport_whole_chart_triggered();
     void on_actionMouse_dragging_triggered(bool);
     void on_actionExport_symbols_triggered();
-    void on_action_aspect_1_1_triggered();
-    void on_action_aspect_1_2_triggered();
     void on_actionFullview_triggered();
     void on_actionTooltips_triggered(bool);
     void on_actionRadar_triggered(bool);
